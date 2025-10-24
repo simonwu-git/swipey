@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { CSVDropzone } from './CSVDropzone'
 import { AccountSelector } from './AccountSelector'
 import { TransactionPreview } from './TransactionPreview'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export function UploadPage() {
   const [selectedAccount, setSelectedAccount] = useState<string>('')
@@ -77,50 +80,55 @@ export function UploadPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          Select Account
-        </h2>
-        <AccountSelector
-          value={selectedAccount}
-          onChange={setSelectedAccount}
-          disabled={isLoading}
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Select Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AccountSelector
+            value={selectedAccount}
+            onChange={setSelectedAccount}
+            disabled={isLoading}
+          />
+        </CardContent>
+      </Card>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          Upload CSV File
-        </h2>
-        <CSVDropzone
-          onFileUpload={handleFileUpload}
-          disabled={!selectedAccount || isLoading}
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload CSV File</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CSVDropzone
+            onFileUpload={handleFileUpload}
+            disabled={!selectedAccount || isLoading}
+          />
+        </CardContent>
+      </Card>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-800">{error}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {transactions.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Transaction Preview
-          </h2>
-          <TransactionPreview transactions={transactions} />
-          
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={handleImport}
-              disabled={!selectedAccount || isLoading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Importing...' : 'Confirm Import'}
-            </button>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Transaction Preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TransactionPreview transactions={transactions} />
+
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={handleImport}
+                disabled={!selectedAccount || isLoading}
+              >
+                {isLoading ? 'Importing...' : 'Confirm Import'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
