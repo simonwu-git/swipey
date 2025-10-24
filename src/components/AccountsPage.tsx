@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { AccountForm } from './AccountForm'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 interface Account {
   id: string
@@ -109,68 +112,64 @@ export function AccountsPage() {
         <h2 className="text-lg font-medium text-gray-900">
           Your Accounts ({accounts.length})
         </h2>
-        <button
-          onClick={handleAddAccount}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
+        <Button onClick={handleAddAccount}>
           Add Account
-        </button>
+        </Button>
       </div>
 
       {accounts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500 mb-4">No accounts found</p>
-          <button
-            onClick={handleAddAccount}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
+          <Button onClick={handleAddAccount}>
             Create your first account
-          </button>
+          </Button>
         </div>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {accounts.map((account) => (
-              <li key={account.id}>
-                <div className="px-4 py-4 flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-blue-600 font-medium">
+        <Card>
+          <CardContent className="p-0">
+            <ul className="divide-y">
+              {accounts.map((account) => (
+                <li key={account.id}>
+                  <div className="px-4 py-4 flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <Avatar>
+                          <AvatarFallback>
                             {account.bankType.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {account.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {account.bankType} • {account.tableKey}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium">
+                            {account.name}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {account.bankType} • {account.tableKey}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditAccount(account)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteAccount(account.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleEditAccount(account)}
-                      className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteAccount(account.id)}
-                      className="text-red-600 hover:text-red-900 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {showForm && (
