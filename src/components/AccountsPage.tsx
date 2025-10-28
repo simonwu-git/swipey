@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { AccountForm } from './AccountForm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,6 +16,7 @@ interface Account {
 }
 
 export function AccountsPage() {
+  const router = useRouter()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -131,7 +133,10 @@ export function AccountsPage() {
               {accounts.map((account) => (
                 <li key={account.id}>
                   <div className="px-4 py-4 flex items-center justify-between">
-                    <div className="flex-1">
+                    <div
+                      className="flex-1 cursor-pointer hover:bg-gray-50 -mx-4 px-4 py-2 rounded transition-colors"
+                      onClick={() => router.push(`/accounts/${account.id}`)}
+                    >
                       <div className="flex items-center">
                         <Avatar>
                           <AvatarFallback>
@@ -152,14 +157,20 @@ export function AccountsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditAccount(account)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditAccount(account)
+                        }}
                       >
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteAccount(account.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteAccount(account.id)
+                        }}
                       >
                         Delete
                       </Button>
