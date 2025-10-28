@@ -113,6 +113,18 @@ export abstract class BaseTransactionParser implements BankParser {
               return new Date(fullYear, parseInt(month) - 1, parseInt(day))
             }
           }
+        } else if (format === '%Y-%m-%d') {
+          const parts = cleaned.split('-')
+          if (parts.length === 3) {
+            const [year, month, day] = parts
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+          }
+        } else if (format === '%m-%d-%Y') {
+          const parts = cleaned.split('-')
+          if (parts.length === 3) {
+            const [month, day, year] = parts
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+          }
         }
       } catch (error) {
         continue
