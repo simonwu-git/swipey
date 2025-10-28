@@ -19,7 +19,10 @@ export async function POST(request: NextRequest) {
     const parser = ParserFactory.createParser(csvContent)
     const transactions = parser.parseCsv()
 
-    return NextResponse.json({ transactions })
+    return NextResponse.json({
+      transactions,
+      fileName: file.name
+    })
   } catch (error) {
     console.error('Error parsing CSV:', error)
     return NextResponse.json(

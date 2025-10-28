@@ -17,6 +17,7 @@ model Account {
   bankType     String        @map("bank_type")
   createdAt    DateTime      @default(now()) @map("created_at")
   transactions Transaction[]
+  importLogs   ImportLog[]
 
   @@map("accounts")
 }
@@ -33,6 +34,21 @@ model Transaction {
   accountId       String    @map("account_id")
   account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@unique([transactionDate, amount, description])
   @@map("transactions")
+}
+
+model ImportLog {
+  id             String   @id @default(cuid())
+  accountId      String   @map("account_id")
+  fileName       String   @map("file_name")
+  totalRecords   Int      @map("total_records")
+  imported       Int
+  skipped        Int      @default(0)
+  earliestDate   DateTime @map("earliest_date")
+  latestDate     DateTime @map("latest_date")
+  processingTime Int      @map("processing_time")
+  importedAt     DateTime @default(now()) @map("imported_at")
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("import_logs")
 }

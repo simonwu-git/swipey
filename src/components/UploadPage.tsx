@@ -7,18 +7,22 @@ import { TransactionPreview } from './TransactionPreview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ImportResult } from '@/lib/types'
 
 export function UploadPage() {
   const [selectedAccount, setSelectedAccount] = useState<string>('')
   const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [fileName, setFileName] = useState<string>('')
   const [transactions, setTransactions] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
 
   const handleFileUpload = async (file: File) => {
     setCsvFile(file)
     setError(null)
     setIsLoading(true)
+    setImportResult(null)
 
     try {
       const formData = new FormData()
@@ -36,6 +40,7 @@ export function UploadPage() {
 
       const data = await response.json()
       setTransactions(data.transactions)
+      setFileName(data.fileName)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -58,6 +63,7 @@ export function UploadPage() {
         body: JSON.stringify({
           accountId: selectedAccount,
           transactions,
+          fileName,
         }),
       })
 
@@ -65,13 +71,13 @@ export function UploadPage() {
         throw new Error('Failed to import transactions')
       }
 
-      const result = await response.json()
-      alert(`Import completed! Inserted: ${result.inserted}, Skipped: ${result.skipped}`)
-      
-      // Reset form
+      const result: ImportResult = await response.json()
+      setImportResult(result)
+
+      // Reset form after showing result
       setCsvFile(null)
       setTransactions([])
-      setSelectedAccount('')
+      setFileName('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -109,6 +115,45 @@ export function UploadPage() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {importResult && (
+        <Alert>
+          <AlertDescription>
+            <div className="space-y-2">
+              <div className="font-semibold text-lg">Import Completed Successfully!</div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="font-medium">File:</span> {importResult.fileName}
+                </div>
+                <div>
+                  <span className="font-medium">Total Records:</span> {importResult.processed}
+                </div>
+                <div>
+                  <span className="font-medium text-green-600">Imported:</span>{' '}
+                  {importResult.inserted}
+                </div>
+                <div>
+                  <span className="font-medium text-orange-600">Skipped:</span>{' '}
+                  {importResult.skipped}
+                </div>
+                {importResult.earliestDate && importResult.latestDate && (
+                  <>
+                    <div>
+                      <span className="font-medium">Date Range:</span>{' '}
+                      {new Date(importResult.earliestDate).toLocaleDateString()} -{' '}
+                      {new Date(importResult.latestDate).toLocaleDateString()}
+                    </div>
+                    <div>
+                      <span className="font-medium">Processing Time:</span>{' '}
+                      {importResult.processingTime}ms
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 

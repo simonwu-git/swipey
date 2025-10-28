@@ -20,6 +20,28 @@ export interface ImportResult {
   processed: number;
   inserted: number;
   skipped: number;
+  earliestDate?: Date;
+  latestDate?: Date;
+  processingTime?: number;
+  fileName?: string;
+}
+
+export interface ImportLog {
+  id: string;
+  accountId: string;
+  fileName: string;
+  totalRecords: number;
+  imported: number;
+  skipped: number;
+  earliestDate: Date;
+  latestDate: Date;
+  processingTime: number;
+  importedAt: Date;
+}
+
+export interface ParseResult {
+  transactions: Transaction[];
+  fileName: string;
 }
 
 export interface BankParser {

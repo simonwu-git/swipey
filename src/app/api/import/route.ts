@@ -3,9 +3,19 @@ import { prisma } from '@/lib/db'
 import { Transaction } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+
   try {
     const body = await request.json()
-    const { accountId, transactions }: { accountId: string; transactions: Transaction[] } = body
+    const {
+      accountId,
+      transactions,
+      fileName
+    }: {
+      accountId: string
+      transactions: Transaction[]
+      fileName?: string
+    } = body
 
     if (!accountId || !transactions || transactions.length === 0) {
       return NextResponse.json(
@@ -26,6 +36,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Calculate date range
+    const dates = transactions.map(t => new Date(t.transaction_date))
+    const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())))
+    const latestDate = new Date(Math.max(...dates.map(d => d.getTime())))
+
     // Prepare transactions for database insertion
     const preparedTransactions = transactions.map(transaction => ({
       transactionDate: new Date(transaction.transaction_date),
@@ -37,21 +52,39 @@ export async function POST(request: NextRequest) {
       accountId: accountId
     }))
 
-    // Insert transactions with skipDuplicates
+    // Insert all transactions
     const result = await prisma.transaction.createMany({
-      data: preparedTransactions,
-      skipDuplicates: true
+      data: preparedTransactions
     })
 
     // Get counts
     const totalProcessed = transactions.length
     const inserted = result.count
     const skipped = totalProcessed - inserted
+    const processingTime = Date.now() - startTime
+
+    // Create import log
+    await prisma.importLog.create({
+      data: {
+        accountId,
+        fileName: fileName || 'unknown.csv',
+        totalRecords: totalProcessed,
+        imported: inserted,
+        skipped,
+        earliestDate,
+        latestDate,
+        processingTime
+      }
+    })
 
     return NextResponse.json({
       processed: totalProcessed,
       inserted,
-      skipped
+      skipped,
+      earliestDate,
+      latestDate,
+      processingTime,
+      fileName: fileName || 'unknown.csv'
     })
   } catch (error) {
     console.error('Error importing transactions:', error)
