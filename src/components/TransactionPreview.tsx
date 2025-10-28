@@ -32,15 +32,15 @@ export function TransactionPreview({ transactions }: TransactionPreviewProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-auto">
+        <Table className="min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
+              <TableHead className="whitespace-nowrap">Date</TableHead>
+              <TableHead className="min-w-[300px]">Description</TableHead>
+              <TableHead className="whitespace-nowrap">Category</TableHead>
+              <TableHead className="whitespace-nowrap">Type</TableHead>
+              <TableHead className="whitespace-nowrap text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -49,7 +49,7 @@ export function TransactionPreview({ transactions }: TransactionPreviewProps) {
                 <TableCell className="whitespace-nowrap">
                   {new Date(transaction.transaction_date).toLocaleDateString()}
                 </TableCell>
-                <TableCell>
+                <TableCell className="min-w-[300px]">
                   {transaction.description}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
@@ -59,7 +59,7 @@ export function TransactionPreview({ transactions }: TransactionPreviewProps) {
                   {transaction.transaction_type || '-'}
                 </TableCell>
                 <TableCell className={cn(
-                  'whitespace-nowrap font-medium',
+                  'whitespace-nowrap font-medium text-right',
                   transaction.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                 )}>
                   ${transaction.amount.toFixed(2)}

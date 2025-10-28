@@ -2,8 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Account, ImportLog } from '@/lib/types';
-import { ArrowLeft, FileText, Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Account, ImportLog, ImportResult } from '@/lib/types';
+import { ArrowLeft, FileText, Calendar, Clock, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { CSVDropzone } from './CSVDropzone';
+import { TransactionPreview } from './TransactionPreview';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface AccountDetailPageProps {
   accountId: string;
@@ -15,6 +27,15 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // CSV Upload state
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>('');
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   useEffect(() => {
     fetchAccountData();
@@ -50,6 +71,94 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setCsvFile(file);
+    setUploadError(null);
+    setIsUploading(true);
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('accountId', accountId);
+
+      const response = await fetch('/api/parse-csv', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to parse CSV');
+      }
+
+      const data = await response.json();
+      setTransactions(data.transactions);
+      setFileName(data.fileName);
+      setShowPreviewModal(true);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (transactions.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const response = await fetch('/api/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId,
+          transactions,
+          fileName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to import transactions');
+      }
+
+      const result: ImportResult = await response.json();
+      setImportResult(result);
+
+      // Reset form and close modal
+      setCsvFile(null);
+      setTransactions([]);
+      setFileName('');
+      setShowPreviewModal(false);
+
+      // Refresh import logs to show the new import
+      const logsResponse = await fetch(`/api/accounts/${accountId}/import-logs`);
+      if (logsResponse.ok) {
+        const logs: ImportLog[] = await logsResponse.json();
+        setImportLogs(logs);
+      }
+
+      // Auto-dismiss success message after 5 seconds
+      setTimeout(() => {
+        setImportResult(null);
+      }, 5000);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCancelPreview = () => {
+    setShowPreviewModal(false);
+    setCsvFile(null);
+    setTransactions([]);
+    setFileName('');
   };
 
   const formatDate = (date: string | Date) => {
@@ -130,6 +239,81 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
             </div>
           </div>
         </div>
+
+        {/* Upload Transactions Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <Upload className="h-5 w-5 text-gray-600 mr-2" />
+            <h2 className="text-lg font-semibold text-gray-900">Upload Transactions</h2>
+          </div>
+          <CSVDropzone
+            onFileUpload={handleFileUpload}
+            disabled={isUploading}
+          />
+        </div>
+
+        {/* Success/Error Alerts */}
+        {uploadError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{uploadError}</AlertDescription>
+          </Alert>
+        )}
+
+        {importResult && (
+          <Alert className="mb-6 bg-green-50 border-green-200">
+            <AlertDescription className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span className="font-medium text-green-900">
+                  Successfully imported {importResult.inserted} transaction{importResult.inserted !== 1 ? 's' : ''} from {importResult.fileName}
+                  {importResult.skipped > 0 && (
+                    <span className="text-orange-600 ml-1">
+                      ({importResult.skipped} skipped)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                onClick={() => setImportResult(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Transaction Preview Modal */}
+        <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+          <DialogContent className="!max-w-[50vw] sm:!max-w-[80vw] w-full max-h-[90vh] overflow-hidden flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle>Transaction Preview</DialogTitle>
+              <DialogDescription>
+                Review the transactions below before importing. File: {fileName}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <TransactionPreview transactions={transactions} />
+            </div>
+
+            <DialogFooter className="px-6 pb-6 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelPreview}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleImport}
+                disabled={isUploading}
+              >
+                {isUploading ? 'Importing...' : 'Confirm Import'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Import Logs Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
