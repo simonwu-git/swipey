@@ -88,28 +88,31 @@ export abstract class BaseTransactionParser implements BankParser {
     }
   }
 
-  protected parseDate(dateStr: string, formats: string[] = ['%m/%d/%y', '%m/%d/%Y', '%Y-%m-%d', '%m-%d-%Y']): Date | null {
+  protected parseDate(dateStr: string, formats: string[] = ['%m/%d/%Y', '%m/%d/%y', '%Y-%m-%d', '%m-%d-%Y']): Date | null {
     if (!dateStr || dateStr.trim() === '') return null
 
     const cleaned = dateStr.trim()
-    
+
     for (const format of formats) {
       try {
-        // Convert Python strptime format to JavaScript
-        const jsFormat = format
-          .replace('%m', 'MM')
-          .replace('%d', 'DD')
-          .replace('%y', 'YY')
-          .replace('%Y', 'YYYY')
-        
+
         // Simple date parsing for common formats
-        if (format === '%m/%d/%y') {
-          const [month, day, year] = cleaned.split('/')
-          const fullYear = parseInt(year) < 50 ? 2000 + parseInt(year) : 1900 + parseInt(year)
-          return new Date(fullYear, parseInt(month) - 1, parseInt(day))
-        } else if (format === '%m/%d/%Y') {
-          const [month, day, year] = cleaned.split('/')
-          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+        if (format === '%m/%d/%Y') {
+          const parts = cleaned.split('/')
+          if (parts.length === 3) {
+            const [month, day, year] = parts
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+          }
+        } else if (format === '%m/%d/%y') {
+          const parts = cleaned.split('/')
+          if (parts.length === 3) {
+            const [month, day, year] = parts
+            // Only process if year is actually 2 digits
+            if (year.length === 2) {
+              const fullYear = parseInt(year) < 50 ? 2000 + parseInt(year) : 1900 + parseInt(year)
+              return new Date(fullYear, parseInt(month) - 1, parseInt(day))
+            }
+          }
         }
       } catch (error) {
         continue
