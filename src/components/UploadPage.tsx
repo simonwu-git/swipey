@@ -23,6 +23,7 @@ export function UploadPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('accountId', selectedAccount)
 
       const response = await fetch('/api/parse-csv', {
         method: 'POST',

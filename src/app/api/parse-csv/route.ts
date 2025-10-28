@@ -5,9 +5,14 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const accountId = formData.get('accountId') as string
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    if (!accountId) {
+      return NextResponse.json({ error: 'No accountId provided' }, { status: 400 })
     }
 
     const csvContent = await file.text()

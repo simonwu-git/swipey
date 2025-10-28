@@ -8,10 +8,6 @@ export interface Transaction {
   created_at?: Date;
 }
 
-export interface ParsedTransaction extends Transaction {
-  isDuplicate?: boolean;
-}
-
 export interface Account {
   id: string;
   name: string;
