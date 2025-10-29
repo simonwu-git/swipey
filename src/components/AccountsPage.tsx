@@ -6,6 +6,7 @@ import { AccountForm } from './AccountForm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { SpendingLineChart } from '@/components/charts/SpendingLineChart'
 
 interface Account {
   id: string
@@ -15,15 +16,24 @@ interface Account {
   createdAt: string
 }
 
+interface AggregateData {
+  month: string
+  [accountName: string]: string | number
+}
+
 export function AccountsPage() {
   const router = useRouter()
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [aggregateData, setAggregateData] = useState<AggregateData[]>([])
+  const [accountNames, setAccountNames] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingChart, setIsLoadingChart] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
   useEffect(() => {
     fetchAccounts()
+    fetchAggregateData()
   }, [])
 
   const fetchAccounts = async () => {
@@ -37,6 +47,21 @@ export function AccountsPage() {
       console.error('Failed to fetch accounts:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchAggregateData = async () => {
+    try {
+      const response = await fetch('/api/transactions/aggregate')
+      if (response.ok) {
+        const result = await response.json()
+        setAggregateData(result.data)
+        setAccountNames(result.accounts)
+      }
+    } catch (error) {
+      console.error('Failed to fetch aggregate data:', error)
+    } finally {
+      setIsLoadingChart(false)
     }
   }
 
@@ -110,6 +135,27 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Spending Overview Section */}
+      {!isLoadingChart && aggregateData.length > 0 && accountNames.length > 0 && (
+        <Card>
+          <CardContent className="p-6">
+            <SpendingLineChart
+              data={aggregateData}
+              accounts={accountNames}
+              title="Spending Overview (All Accounts)"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoadingChart && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-gray-500">Loading spending data...</div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-gray-900">
           Your Accounts ({accounts.length})
