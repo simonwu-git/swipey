@@ -150,7 +150,7 @@ export function AccountsPage() {
             <SpendingLineChart
               data={aggregateData}
               accounts={accountNames}
-              title="Spending Overview (All Accounts)"
+              title="Spending Overview"
               onMonthClick={handleMonthClick}
             />
           </CardContent>

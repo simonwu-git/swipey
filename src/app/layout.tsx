@@ -21,7 +21,6 @@ export default function RootLayout({
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold text-gray-900">
-                Finances Web
               </h1>
               <div className="flex space-x-4">
                 <a
