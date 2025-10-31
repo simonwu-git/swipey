@@ -17,11 +17,11 @@ interface MonthlyAccountData {
 
 export async function GET() {
   try {
-    // Fetch all transactions from all accounts, excluding 'Payment' type
+    // Fetch all transactions from all accounts, excluding 'Payment' and 'Credit' types
     const transactions = await prisma.transaction.findMany({
       where: {
         transactionType: {
-          not: 'Payment',
+          notIn: ['Payment', 'Credit'],
         },
       },
       select: {

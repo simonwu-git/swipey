@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SpendingLineChart } from '@/components/charts/SpendingLineChart'
+import { TransactionModal } from '@/components/charts/TransactionModal'
 
 interface Account {
   id: string
@@ -30,6 +31,8 @@ export function AccountsPage() {
   const [isLoadingChart, setIsLoadingChart] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [showTransactionModal, setShowTransactionModal] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   useEffect(() => {
     fetchAccounts()
@@ -94,6 +97,11 @@ export function AccountsPage() {
     }
   }
 
+  const handleMonthClick = (month: string) => {
+    setSelectedMonth(month)
+    setShowTransactionModal(true)
+  }
+
   const handleFormSubmit = async (accountData: Omit<Account, 'id' | 'createdAt'>) => {
     try {
       const url = editingAccount ? `/api/accounts/${editingAccount.id}` : '/api/accounts'
@@ -143,6 +151,7 @@ export function AccountsPage() {
               data={aggregateData}
               accounts={accountNames}
               title="Spending Overview (All Accounts)"
+              onMonthClick={handleMonthClick}
             />
           </CardContent>
         </Card>
@@ -239,6 +248,13 @@ export function AccountsPage() {
           }}
         />
       )}
+
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        month={selectedMonth}
+        accounts={accounts.map(acc => ({ id: acc.id, name: acc.name }))}
+      />
     </div>
   )
 }

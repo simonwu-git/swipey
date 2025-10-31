@@ -18,6 +18,7 @@ interface SpendingLineChartProps {
   }>;
   accounts: string[];
   title?: string;
+  onMonthClick?: (month: string) => void;
 }
 
 // Predefined color palette for accounts
@@ -32,7 +33,14 @@ const COLORS = [
   '#db2777', // pink
 ];
 
-export function SpendingLineChart({ data, accounts, title = 'Monthly Spending' }: SpendingLineChartProps) {
+export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', onMonthClick }: SpendingLineChartProps) {
+  // Handle click on chart - receives the data point directly
+  const handleClick = (clickData: any) => {
+    // When clicking on a data point, clickData will have the month property
+    if (clickData && clickData.month && onMonthClick) {
+      onMonthClick(clickData.month);
+    }
+  };
   // Format currency for Y-axis
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -101,8 +109,9 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending' }
               name={accountName}
               stroke={COLORS[index % COLORS.length]}
               strokeWidth={2}
-              dot={{ fill: COLORS[index % COLORS.length], r: 4 }}
-              activeDot={{ r: 6 }}
+              dot={{ fill: COLORS[index % COLORS.length], r: 4, cursor: 'pointer' }}
+              activeDot={{ r: 6, cursor: 'pointer', onClick: (e: any, payload: any) => handleClick(payload.payload) }}
+              onClick={handleClick}
             />
           ))}
         </LineChart>
