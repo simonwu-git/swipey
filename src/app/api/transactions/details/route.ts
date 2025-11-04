@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        transactionDate: 'desc',
+        transactionDate: 'asc',
       },
     });
 
