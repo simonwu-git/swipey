@@ -10,11 +10,12 @@ import {
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
   type ChartConfig,
 } from '@/components/ui/chart';
+import { getAccountColor } from '@/lib/accountColors';
+import { cn } from '@/lib/utils';
 
 interface SpendingLineChartProps {
   data: Array<{
@@ -26,25 +27,51 @@ interface SpendingLineChartProps {
   onMonthClick?: (month: string) => void;
 }
 
-// Predefined color palette for accounts
-const COLORS = [
-  '#2563eb', // blue
-  '#dc2626', // red
-  '#16a34a', // green
-  '#9333ea', // purple
-  '#ea580c', // orange
-  '#0891b2', // cyan
-  '#ca8a04', // yellow
-  '#db2777', // pink
-];
+// Custom tooltip content with adjustable spacing
+function CustomTooltipContent({ active, payload, label }: any) {
+  if (!active || !payload?.length) {
+    return null;
+  }
 
-// Custom colors for specific accounts
-const ACCOUNT_COLORS: Record<string, string> = {
-  'Savor': '#ea580c', // orange
-  'Venture X': '#1e3a8a', // dark blue
-  'Freedom': '#6b7280', // grey
-  'Preferred': '#60a5fa', // light blue
-};
+  // Format currency for display
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  return (
+    <div className={cn(
+      "border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl"
+    )}>
+      <div className="font-medium mb-2">{label}</div>
+      <div className="grid gap-2">
+        {payload.map((item: any) => {
+          const accountName = item.name || item.dataKey;
+          const color = item.color || item.stroke;
+
+          return (
+            <div key={accountName} className="flex items-center gap-3">
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              <div className="flex flex-1 justify-between items-center gap-4">
+                <span className="text-muted-foreground">{accountName}</span>
+                <span className="text-foreground font-mono font-medium tabular-nums">
+                  {formatCurrency(item.value)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', onMonthClick }: SpendingLineChartProps) {
   // Handle click on chart - receives the data point directly
@@ -67,6 +94,7 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
 
   // Format month for X-axis (e.g., "2024-01" -> "Jan 2024")
   const formatMonth = (month: string) => {
+    if (!month) return '';
     const [year, monthNum] = month.split('-');
     const date = new Date(parseInt(year), parseInt(monthNum) - 1);
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -76,8 +104,7 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
   // Use both original and sanitized keys so legend can find the labels
   const chartConfig: ChartConfig = accounts.reduce((config, accountName, index) => {
     const sanitizedKey = accountName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-    // Check if account has a custom color, otherwise use default palette
-    const color = ACCOUNT_COLORS[accountName] || COLORS[index % COLORS.length];
+    const color = getAccountColor(accountName, index);
 
     config[sanitizedKey] = {
       label: accountName,
@@ -119,17 +146,13 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
             style={{ fontSize: '12px' }}
           />
           <ChartTooltip
-            content={
-              <ChartTooltipContent
-                labelFormatter={(value) => formatMonth(value as string)}
-                formatter={(value, name) => (
-                  <>
-                    <span className="font-medium">{name}: </span>
-                    <span className="font-mono">{formatCurrency(value as number)}</span>
-                  </>
-                )}
+            content={({ active, payload, label }) => (
+              <CustomTooltipContent
+                active={active}
+                payload={payload}
+                label={formatMonth(label as string)}
               />
-            }
+            )}
           />
           <ChartLegend content={<ChartLegendContent />} />
           {accounts.map((accountName) => {
