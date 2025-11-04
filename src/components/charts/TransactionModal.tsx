@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { CategorySankeyChart } from './CategorySankeyChart';
 
 interface Transaction {
   id: string;
@@ -108,7 +109,7 @@ export function TransactionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {month ? `Transactions - ${formatMonth(month)}` : 'Transactions'}
@@ -117,17 +118,17 @@ export function TransactionModal({
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-gray-500">Total Transactions</div>
-                <div className="text-2xl font-bold">{summary.totalTransactions}</div>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground">Total Transactions</div>
+                <div className="text-xl font-bold">{summary.totalTransactions}</div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-gray-500">Total Spending</div>
-                <div className="text-2xl font-bold">
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground">Total Spending</div>
+                <div className="text-xl font-bold">
                   {formatCurrency(summary.totalAmount)}
                 </div>
               </CardContent>
@@ -151,6 +152,11 @@ export function TransactionModal({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Category Sankey Diagram */}
+          {!isLoading && transactions.length > 0 && (
+            <CategorySankeyChart transactions={transactions} />
+          )}
 
           {/* Transaction Table */}
           <div className="flex-1 overflow-auto border rounded-lg">
