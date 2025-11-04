@@ -187,10 +187,10 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading account details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading account details...</p>
         </div>
       </div>
     );
@@ -198,12 +198,12 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
 
   if (error || !account) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Account not found'}</p>
+          <p className="text-destructive mb-4">{error || 'Account not found'}</p>
           <button
             onClick={() => router.push('/accounts')}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-primary hover:text-primary/80 font-medium transition-colors"
           >
             Back to Accounts
           </button>
@@ -213,26 +213,26 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <button
             onClick={() => router.push('/accounts')}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            className="flex items-center text-muted-foreground hover:text-foreground mb-4 transition-colors"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
             Back to Accounts
           </button>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-xl">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xl">
                 {account.bankType.charAt(0).toUpperCase()}
               </div>
               <div className="ml-4">
-                <h1 className="text-2xl font-bold text-gray-900">{account.name}</h1>
-                <p className="text-gray-600">
+                <h1 className="text-2xl font-bold text-foreground">{account.name}</h1>
+                <p className="text-muted-foreground">
                   {account.bankType.replace('_', ' ').toUpperCase()} • {account.tableKey}
                 </p>
               </div>
@@ -241,10 +241,10 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
         </div>
 
         {/* Upload Transactions Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-6">
           <div className="flex items-center mb-4">
-            <Upload className="h-5 w-5 text-gray-600 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-900">Upload Transactions</h2>
+            <Upload className="h-5 w-5 text-muted-foreground mr-2" />
+            <h2 className="text-lg font-semibold text-foreground">Upload Transactions</h2>
           </div>
           <CSVDropzone
             onFileUpload={handleFileUpload}
@@ -260,14 +260,14 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
         )}
 
         {importResult && (
-          <Alert className="mb-6 bg-green-50 border-green-200">
+          <Alert className="mb-6 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900">
             <AlertDescription className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="font-medium text-green-900">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
+                <span className="font-medium text-green-900 dark:text-green-200">
                   Successfully imported {importResult.inserted} transaction{importResult.inserted !== 1 ? 's' : ''} from {importResult.fileName}
                   {importResult.skipped > 0 && (
-                    <span className="text-orange-600 ml-1">
+                    <span className="text-orange-600 dark:text-orange-400 ml-1">
                       ({importResult.skipped} skipped)
                     </span>
                   )}
@@ -275,7 +275,7 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
               </div>
               <button
                 onClick={() => setImportResult(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <XCircle className="h-5 w-5" />
               </button>
@@ -316,67 +316,67 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
         </Dialog>
 
         {/* Import Logs Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center">
               <FileText className="h-5 w-5 mr-2" />
               Import History
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {importLogs.length} {importLogs.length === 1 ? 'import' : 'imports'} recorded
             </p>
           </div>
 
           {importLogs.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No imports yet</h3>
-              <p className="text-gray-600">
+              <FileText className="h-12 w-12 text-muted mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No imports yet</h3>
+              <p className="text-muted-foreground">
                 Import logs will appear here when you upload transactions for this account.
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-border">
               {importLogs.map((log) => (
-                <div key={log.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                <div key={log.id} className="px-6 py-4 hover:bg-accent transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center mb-2">
-                        <FileText className="h-5 w-5 text-gray-400 mr-2" />
-                        <h3 className="font-medium text-gray-900">{log.fileName}</h3>
+                        <FileText className="h-5 w-5 text-muted-foreground mr-2" />
+                        <h3 className="font-medium text-foreground">{log.fileName}</h3>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
                         {/* Import Stats */}
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Records</p>
+                          <p className="text-xs text-muted-foreground/70 mb-1">Records</p>
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center">
-                              <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
-                              <span className="text-sm font-medium text-green-600">
+                              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-500 mr-1" />
+                              <span className="text-sm font-medium text-green-600 dark:text-green-500">
                                 {log.imported} imported
                               </span>
                             </div>
                             {log.skipped > 0 && (
                               <div className="flex items-center">
-                                <XCircle className="h-4 w-4 text-orange-600 mr-1" />
-                                <span className="text-sm font-medium text-orange-600">
+                                <XCircle className="h-4 w-4 text-orange-600 dark:text-orange-500 mr-1" />
+                                <span className="text-sm font-medium text-orange-600 dark:text-orange-500">
                                   {log.skipped} skipped
                                 </span>
                               </div>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1">
                             Total: {log.totalRecords}
                           </p>
                         </div>
 
                         {/* Date Range */}
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Transaction Period</p>
+                          <p className="text-xs text-muted-foreground/70 mb-1">Transaction Period</p>
                           <div className="flex items-center">
-                            <Calendar className="h-4 w-4 text-gray-400 mr-1" />
-                            <span className="text-sm text-gray-900">
+                            <Calendar className="h-4 w-4 text-muted-foreground mr-1" />
+                            <span className="text-sm text-foreground">
                               {formatDateRange(log.earliestDate, log.latestDate)}
                             </span>
                           </div>
@@ -384,14 +384,14 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
 
                         {/* Import Time */}
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Imported At</p>
+                          <p className="text-xs text-muted-foreground/70 mb-1">Imported At</p>
                           <div className="flex items-center">
-                            <Clock className="h-4 w-4 text-gray-400 mr-1" />
-                            <span className="text-sm text-gray-900">
+                            <Clock className="h-4 w-4 text-muted-foreground mr-1" />
+                            <span className="text-sm text-foreground">
                               {formatDate(log.importedAt)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1">
                             Processed in {log.processingTime}ms
                           </p>
                         </div>
