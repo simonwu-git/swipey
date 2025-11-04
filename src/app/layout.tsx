@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import Image from 'next/image'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -20,8 +21,16 @@ export default function RootLayout({
         <nav className="bg-white shadow-sm border-b">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-gray-900">
-              </h1>
+              <div className="flex items-center">
+                <Image
+                  src="/rocket.png"
+                  alt="Rocket icon"
+                  width={65}
+                  height={65}
+                  className="object-contain mix-blend-multiply"
+                  style={{ filter: 'brightness(1.2) contrast(1.1)' }}
+                />
+              </div>
               <div className="flex space-x-4">
                 <a
                   href="/accounts"
