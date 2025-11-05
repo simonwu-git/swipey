@@ -20,6 +20,7 @@ interface CategorySankeyChartProps {
 
 interface SankeyNode {
   name: string;
+  value?: number; // Total amount for this node
 }
 
 interface SankeyLink {
@@ -47,37 +48,70 @@ const COLORS = [
 ];
 
 // Custom node renderer with labels - function form to preserve event handlers
-const renderCustomNode = (props: any) => {
-  const { x, y, width, height, index, payload, onMouseEnter, onMouseLeave, onClick } = props;
-  const isRoot = index === 0;
-  const color = isRoot ? '#6366f1' : COLORS[index % COLORS.length];
+// Expects containerProps to have accountCount for distinguishing left (accounts) from right (categories)
+const createCustomNode = (accountCount: number, totalAmount: number) => {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
-  return (
-    <g>
-      <Rectangle
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={color}
-        fillOpacity={0.8}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onClick={onClick}
-      />
-      <text
-        textAnchor={isRoot ? 'end' : 'start'}
-        x={isRoot ? x - 10 : x + width + 10}
-        y={y + height / 2}
-        fontSize="12"
-        fill="currentColor"
-        dominantBaseline="middle"
-        pointerEvents="none"
-      >
-        {payload.name}
-      </text>
-    </g>
-  );
+  const formatPercentage = (value: number, total: number) => {
+    const percentage = (value / total) * 100;
+    return percentage.toFixed(1) + '%';
+  };
+
+  return (props: any) => {
+    const { x, y, width, height, index, payload, onMouseEnter, onMouseLeave, onClick } = props;
+    const isAccount = index < accountCount;
+    const color = COLORS[index % COLORS.length];
+
+    return (
+      <g>
+        <Rectangle
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill={color}
+          fillOpacity={0.8}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onClick={onClick}
+          style={{ cursor: 'pointer' }}
+        />
+        <text
+          textAnchor={isAccount ? 'end' : 'start'}
+          x={isAccount ? x - 10 : x + width + 10}
+          y={y + height / 2 - 6}
+          fontSize="12"
+          fill="currentColor"
+          dominantBaseline="middle"
+          pointerEvents="none"
+          fontWeight="500"
+        >
+          {payload.name}
+        </text>
+        {payload.value && (
+          <text
+            textAnchor={isAccount ? 'end' : 'start'}
+            x={isAccount ? x - 10 : x + width + 10}
+            y={y + height / 2 + 8}
+            fontSize="12"
+            fill="currentColor"
+            opacity={0.7}
+            dominantBaseline="middle"
+            pointerEvents="none"
+          >
+            {formatCurrency(payload.value)} ({formatPercentage(payload.value, totalAmount)})
+          </text>
+        )}
+      </g>
+    );
+  };
 };
 
 // Custom link renderer - function form to preserve event handlers
@@ -138,39 +172,67 @@ const createCustomTooltip = (totalSpending: number) => {
 
     // Check if this is a link or node
     if (data.source !== undefined && data.target !== undefined) {
-      // This is a link
+      // This is a link - show the flow between account and category
+      const sourceTotal = data.source.value || 0;
+      const targetTotal = data.target.value || 0;
+      const flowAmount = data.value;
+
       return (
         <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
-          <div className="font-medium mb-1">
+          <div className="font-semibold mb-2 text-sm">
             {data.source.name} → {data.target.name}
           </div>
-          <div className="text-foreground font-mono">
-            {formatCurrency(data.value)}
-          </div>
-          <div className="text-muted-foreground text-[10px] mt-1">
-            {formatPercentage(data.value, totalSpending)} of total
+          <div className="space-y-1">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Flow amount:</span>
+              <span className="text-foreground font-mono font-medium">
+                {formatCurrency(flowAmount)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">% of total:</span>
+              <span className="text-foreground font-mono">
+                {formatPercentage(flowAmount, totalSpending)}
+              </span>
+            </div>
+            <div className="border-t border-border/50 my-1 pt-1">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground text-[10px]">% of {data.source.name}:</span>
+                <span className="text-foreground font-mono text-[10px]">
+                  {formatPercentage(flowAmount, sourceTotal)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground text-[10px]">% of {data.target.name}:</span>
+                <span className="text-foreground font-mono text-[10px]">
+                  {formatPercentage(flowAmount, targetTotal)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       );
     }
 
-    // This is a node
-    const isRootNode = data.name === 'Total Spending';
-
+    // This is a node - show account or category total
     return (
       <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
-        <div className="font-medium mb-1">{data.name}</div>
+        <div className="font-semibold mb-2 text-sm">{data.name}</div>
         {data.value && (
-          <>
-            <div className="text-foreground font-mono text-sm">
-              {formatCurrency(data.value)}
+          <div className="space-y-1">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Total:</span>
+              <span className="text-foreground font-mono font-medium text-sm">
+                {formatCurrency(data.value)}
+              </span>
             </div>
-            {!isRootNode && (
-              <div className="text-muted-foreground text-[10px] mt-1">
-                {formatPercentage(data.value, totalSpending)} of total spending
-              </div>
-            )}
-          </>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">% of total:</span>
+              <span className="text-foreground font-mono">
+                {formatPercentage(data.value, totalSpending)}
+              </span>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -179,54 +241,76 @@ const createCustomTooltip = (totalSpending: number) => {
 
 export function CategorySankeyChart({
   transactions,
-  title = 'Spending by Category'
+  title = 'Account to Category Flow'
 }: CategorySankeyChartProps) {
   const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
 
-  const sankeyData: SankeyData = useMemo(() => {
-    // Aggregate transactions by category
+  const { sankeyData, accountCount } = useMemo((): { sankeyData: SankeyData; accountCount: number } => {
+    // Aggregate by (account, category) pairs
+    const flowMap = new Map<string, number>();
+    const accountTotals = new Map<string, number>();
     const categoryTotals = new Map<string, number>();
 
     transactions.forEach((transaction) => {
+      const account = transaction.accountName;
       const category = transaction.category || 'Uncategorized';
-      const current = categoryTotals.get(category) || 0;
-      categoryTotals.set(category, current + transaction.amount);
+      const flowKey = `${account}→${category}`;
+
+      // Update flow
+      flowMap.set(flowKey, (flowMap.get(flowKey) || 0) + transaction.amount);
+
+      // Update account totals
+      accountTotals.set(account, (accountTotals.get(account) || 0) + transaction.amount);
+
+      // Update category totals
+      categoryTotals.set(category, (categoryTotals.get(category) || 0) + transaction.amount);
     });
 
-    // Sort categories by amount (descending)
+    // Sort accounts and categories by total amount (descending)
+    const sortedAccounts = Array.from(accountTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([account]) => account);
+
     const sortedCategories = Array.from(categoryTotals.entries())
-      .sort((a, b) => b[1] - a[1]);
+      .sort((a, b) => b[1] - a[1])
+      .map(([category]) => category);
 
-    const formatCurrency = (value: number) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(value);
-    };
-
-    const formatPercentage = (value: number, total: number) => {
-      const percentage = (value / total) * 100;
-      return percentage.toFixed(1) + '%';
-    };
-
-    // Build nodes: root node + category nodes with labels including amount and percentage
+    // Build nodes: accounts (left) + categories (right) with their total values
     const nodes: SankeyNode[] = [
-      { name: 'Total Spending' },
-      ...sortedCategories.map(([category, amount]) => ({
-        name: `${category} - ${formatCurrency(amount)} (${formatPercentage(amount, totalAmount)})`
+      ...sortedAccounts.map(account => ({
+        name: account,
+        value: accountTotals.get(account) || 0
+      })),
+      ...sortedCategories.map(category => ({
+        name: category,
+        value: categoryTotals.get(category) || 0
       }))
     ];
 
-    // Build links from root to each category
-    const links: SankeyLink[] = sortedCategories.map(([_, amount], index) => ({
-      source: 0, // Root node
-      target: index + 1, // Category node (offset by 1 for root)
-      value: amount
-    }));
+    // Create index maps for quick lookup
+    const accountIndexMap = new Map(sortedAccounts.map((acc, i) => [acc, i]));
+    const categoryIndexMap = new Map(sortedCategories.map((cat, i) => [cat, i + sortedAccounts.length]));
 
-    return { nodes, links };
+    // Build links from accounts to categories
+    const links: SankeyLink[] = [];
+    flowMap.forEach((amount, flowKey) => {
+      const [account, category] = flowKey.split('→');
+      const sourceIndex = accountIndexMap.get(account);
+      const targetIndex = categoryIndexMap.get(category);
+
+      if (sourceIndex !== undefined && targetIndex !== undefined) {
+        links.push({
+          source: sourceIndex,
+          target: targetIndex,
+          value: amount
+        });
+      }
+    });
+
+    return {
+      sankeyData: { nodes, links },
+      accountCount: sortedAccounts.length
+    };
   }, [transactions, totalAmount]);
 
   // Only render if we have data
@@ -234,23 +318,25 @@ export function CategorySankeyChart({
     return null;
   }
 
+  const categoryCount = sankeyData.nodes.length - accountCount;
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-medium">{title}</h4>
         <span className="text-xs text-muted-foreground">
-          {sankeyData.nodes.length - 1} {sankeyData.nodes.length - 1 === 1 ? 'category' : 'categories'}
+          {accountCount} {accountCount === 1 ? 'account' : 'accounts'} → {categoryCount} {categoryCount === 1 ? 'category' : 'categories'}
         </span>
       </div>
       <div className="border rounded-lg bg-card p-4">
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={400}>
           <Sankey
             data={sankeyData}
             nodeWidth={10}
-            nodePadding={20}
+            nodePadding={30}
             linkCurvature={0.5}
             iterations={32}
-            node={renderCustomNode}
+            node={createCustomNode(accountCount, totalAmount)}
             link={renderCustomLink}
             margin={{ top: 10, right: 250, bottom: 10, left: 150 }}
           >
