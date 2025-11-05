@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Sankey, Tooltip, ResponsiveContainer, Rectangle } from 'recharts';
+import { Sankey, ResponsiveContainer, Rectangle } from 'recharts';
 
 interface Transaction {
   id: string;
@@ -147,98 +147,6 @@ const renderCustomLink = (props: any) => {
   );
 };
 
-// Custom tooltip for Sankey - needs total spending passed in
-const createCustomTooltip = (totalSpending: number) => {
-  return function CustomTooltip({ active, payload }: any) {
-    if (!active || !payload?.length) {
-      return null;
-    }
-
-    const data = payload[0].payload;
-
-    const formatCurrency = (value: number) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value);
-    };
-
-    const formatPercentage = (value: number, total: number) => {
-      const percentage = (value / total) * 100;
-      return percentage.toFixed(1) + '%';
-    };
-
-    // Check if this is a link or node
-    if (data.source !== undefined && data.target !== undefined) {
-      // This is a link - show the flow between account and category
-      const sourceTotal = data.source.value || 0;
-      const targetTotal = data.target.value || 0;
-      const flowAmount = data.value;
-
-      return (
-        <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
-          <div className="font-semibold mb-2 text-sm">
-            {data.source.name} → {data.target.name}
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Flow amount:</span>
-              <span className="text-foreground font-mono font-medium">
-                {formatCurrency(flowAmount)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">% of total:</span>
-              <span className="text-foreground font-mono">
-                {formatPercentage(flowAmount, totalSpending)}
-              </span>
-            </div>
-            <div className="border-t border-border/50 my-1 pt-1">
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground text-[10px]">% of {data.source.name}:</span>
-                <span className="text-foreground font-mono text-[10px]">
-                  {formatPercentage(flowAmount, sourceTotal)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground text-[10px]">% of {data.target.name}:</span>
-                <span className="text-foreground font-mono text-[10px]">
-                  {formatPercentage(flowAmount, targetTotal)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // This is a node - show account or category total
-    return (
-      <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
-        <div className="font-semibold mb-2 text-sm">{data.name}</div>
-        {data.value && (
-          <div className="space-y-1">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Total:</span>
-              <span className="text-foreground font-mono font-medium text-sm">
-                {formatCurrency(data.value)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">% of total:</span>
-              <span className="text-foreground font-mono">
-                {formatPercentage(data.value, totalSpending)}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-}
-
 export function CategorySankeyChart({
   transactions,
   title = 'Account to Category Flow'
@@ -339,9 +247,7 @@ export function CategorySankeyChart({
             node={createCustomNode(accountCount, totalAmount)}
             link={renderCustomLink}
             margin={{ top: 10, right: 250, bottom: 10, left: 150 }}
-          >
-            <Tooltip content={createCustomTooltip(totalAmount)} />
-          </Sankey>
+          />
         </ResponsiveContainer>
       </div>
     </div>
