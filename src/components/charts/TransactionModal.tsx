@@ -109,7 +109,7 @@ export function TransactionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] sm:max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {month ? `Transactions - ${formatMonth(month)}` : 'Transactions'}
@@ -153,53 +153,58 @@ export function TransactionModal({
             </Select>
           </div>
 
-          {/* Category Sankey Diagram */}
-          {!isLoading && transactions.length > 0 && (
-            <CategorySankeyChart transactions={transactions} />
-          )}
-
-          {/* Transaction Table */}
-          <div className="flex-1 overflow-auto border rounded-lg">
-            {isLoading ? (
-              <div className="p-8 text-center text-gray-500">
-                Loading transactions...
+          {/* Main content area - side by side on large screens */}
+          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
+            {/* Left: Sankey Chart */}
+            {!isLoading && transactions.length > 0 && (
+              <div className="lg:w-[55%] min-h-[300px]">
+                <CategorySankeyChart transactions={transactions} height="100%" />
               </div>
-            ) : transactions.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                No transactions found for this period
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Account</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(transaction.date)}
-                      </TableCell>
-                      <TableCell>{transaction.accountName}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {transaction.description}
-                      </TableCell>
-                      <TableCell>
-                        {transaction.category || <span className="text-gray-400">—</span>}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(transaction.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
             )}
+
+            {/* Right: Transaction Table */}
+            <div className="flex-1 overflow-auto border rounded-lg min-h-[300px]">
+              {isLoading ? (
+                <div className="p-8 text-center text-gray-500">
+                  Loading transactions...
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  No transactions found for this period
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {formatDate(transaction.date)}
+                        </TableCell>
+                        <TableCell>{transaction.accountName}</TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {transaction.description}
+                        </TableCell>
+                        <TableCell>
+                          {transaction.category || <span className="text-gray-400">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(transaction.amount)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>

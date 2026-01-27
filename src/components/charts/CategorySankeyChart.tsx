@@ -16,6 +16,7 @@ interface Transaction {
 interface CategorySankeyChartProps {
   transactions: Transaction[];
   title?: string;
+  height?: number | string;
 }
 
 interface SankeyNode {
@@ -149,7 +150,8 @@ const renderCustomLink = (props: any) => {
 
 export function CategorySankeyChart({
   transactions,
-  title = 'Account to Category Flow'
+  title = 'Account to Category Flow',
+  height = 400,
 }: CategorySankeyChartProps) {
   const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
 
@@ -229,15 +231,15 @@ export function CategorySankeyChart({
   const categoryCount = sankeyData.nodes.length - accountCount;
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-medium">{title}</h4>
         <span className="text-xs text-muted-foreground">
           {accountCount} {accountCount === 1 ? 'account' : 'accounts'} → {categoryCount} {categoryCount === 1 ? 'category' : 'categories'}
         </span>
       </div>
-      <div className="border rounded-lg bg-card p-4">
-        <ResponsiveContainer width="100%" height={400}>
+      <div className="border rounded-lg bg-card p-4 flex-1">
+        <ResponsiveContainer width="100%" height={height}>
           <Sankey
             data={sankeyData}
             nodeWidth={10}
@@ -246,7 +248,7 @@ export function CategorySankeyChart({
             iterations={32}
             node={createCustomNode(accountCount, totalAmount)}
             link={renderCustomLink}
-            margin={{ top: 10, right: 250, bottom: 10, left: 150 }}
+            margin={{ top: 10, right: 200, bottom: 10, left: 150 }}
           />
         </ResponsiveContainer>
       </div>
