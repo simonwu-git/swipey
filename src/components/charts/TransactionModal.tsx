@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -51,6 +51,7 @@ export function TransactionModal({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredAccountId, setFilteredAccountId] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [amountSort, setAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [summary, setSummary] = useState({
     totalTransactions: 0,
     totalAmount: 0,
@@ -59,6 +60,7 @@ export function TransactionModal({
 
   useEffect(() => {
     if (isOpen && month) {
+      setAmountSort('none');
       fetchTransactions();
     }
   }, [isOpen, month, filteredAccountId]);
@@ -84,6 +86,19 @@ export function TransactionModal({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sortedTransactions = useMemo(() => {
+    if (amountSort === 'none') return transactions;
+    return [...transactions].sort((a, b) =>
+      amountSort === 'asc' ? a.amount - b.amount : b.amount - a.amount
+    );
+  }, [transactions, amountSort]);
+
+  const cycleAmountSort = () => {
+    setAmountSort((prev) =>
+      prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none'
+    );
   };
 
   const formatCurrency = (value: number) => {
@@ -180,11 +195,16 @@ export function TransactionModal({
                       <TableHead>Account</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead
+                        className="text-right cursor-pointer select-none hover:text-foreground"
+                        onClick={cycleAmountSort}
+                      >
+                        Amount{amountSort === 'asc' ? ' ▲' : amountSort === 'desc' ? ' ▼' : ''}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions.map((transaction) => (
+                    {sortedTransactions.map((transaction) => (
                       <TableRow key={transaction.id}>
                         <TableCell className="whitespace-nowrap">
                           {formatDate(transaction.date)}
