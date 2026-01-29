@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -14,6 +15,13 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from '@/components/ui/chart';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getAccountColor } from '@/lib/accountColors';
 import { cn } from '@/lib/utils';
 
@@ -74,6 +82,54 @@ function CustomTooltipContent({ active, payload, label }: any) {
 }
 
 export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', onMonthClick }: SpendingLineChartProps) {
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+
+  // Extract unique years from data
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    data.forEach(item => {
+      if (item.month) {
+        const year = item.month.split('-')[0];
+        years.add(year);
+      }
+    });
+    return Array.from(years).sort().reverse();
+  }, [data]);
+
+  // Filter and transform data based on selected year
+  const filteredData = useMemo(() => {
+    if (selectedYear === 'all') {
+      return data;
+    }
+
+    // Create a template with all 12 months for the selected year
+    const monthTemplate: Array<{ month: string; [key: string]: string | number }> = [];
+    for (let m = 1; m <= 12; m++) {
+      const monthStr = `${selectedYear}-${String(m).padStart(2, '0')}`;
+      const entry: { month: string; [key: string]: string | number } = { month: monthStr };
+      // Initialize all accounts to 0
+      accounts.forEach(acc => {
+        entry[acc] = 0;
+      });
+      monthTemplate.push(entry);
+    }
+
+    // Fill in actual data
+    data.forEach(item => {
+      if (item.month && item.month.startsWith(selectedYear)) {
+        const idx = monthTemplate.findIndex(t => t.month === item.month);
+        if (idx !== -1) {
+          // Copy all values from the actual data
+          Object.keys(item).forEach(key => {
+            monthTemplate[idx][key] = item[key];
+          });
+        }
+      }
+    });
+
+    return monthTemplate;
+  }, [data, selectedYear, accounts]);
+
   // Handle click on chart - receives the data point directly
   const handleClick = (clickData: any) => {
     // When clicking on a data point, clickData will have the month property
@@ -125,10 +181,23 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
 
   return (
     <div className="w-full">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="Select year" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {availableYears.map(year => (
+              <SelectItem key={year} value={year}>{year}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <ChartContainer config={chartConfig} className="h-[400px]">
         <LineChart
-          data={data}
+          data={filteredData}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
