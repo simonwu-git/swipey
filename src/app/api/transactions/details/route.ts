@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+const getPreviousMonth = (year: number, monthNum: number) => {
+  const date = new Date(year, monthNum - 2); // -1 for 0-index, -1 for previous
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+};
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -35,21 +43,51 @@ export async function GET(request: NextRequest) {
       whereClause.accountId = accountId;
     }
 
-    // Fetch transactions
-    const transactions = await prisma.transaction.findMany({
-      where: whereClause,
-      include: {
-        account: {
-          select: {
-            id: true,
-            name: true,
+    // Calculate previous month dates
+    const prev = getPreviousMonth(year, monthNum);
+    const prevStartDate = new Date(prev.year, prev.month - 1, 1);
+    const prevEndDate = new Date(prev.year, prev.month, 0, 23, 59, 59, 999);
+
+    // Build previous month query (same filters, different dates)
+    const prevWhereClause: any = {
+      transactionDate: {
+        gte: prevStartDate,
+        lte: prevEndDate,
+      },
+      transactionType: {
+        notIn: ['Payment', 'Credit'],
+      },
+    };
+
+    if (accountId) {
+      prevWhereClause.accountId = accountId;
+    }
+
+    // Fetch transactions and previous month total in parallel
+    const [transactions, prevResult] = await Promise.all([
+      prisma.transaction.findMany({
+        where: whereClause,
+        include: {
+          account: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: {
-        transactionDate: 'asc',
-      },
-    });
+        orderBy: {
+          transactionDate: 'asc',
+        },
+      }),
+      prisma.transaction.aggregate({
+        where: prevWhereClause,
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const previousMonthTotal = prevResult._sum.amount
+      ? Math.abs(Number(prevResult._sum.amount))
+      : null;
 
     // Calculate totals
     const totalAmount = transactions.reduce(
@@ -70,6 +108,7 @@ export async function GET(request: NextRequest) {
       summary: {
         totalTransactions: transactions.length,
         totalAmount,
+        previousMonthTotal,
         month,
       },
     });

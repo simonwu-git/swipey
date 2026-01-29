@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { CategorySankeyChart } from './CategorySankeyChart';
+import { cn } from '@/lib/utils';
 
 interface Transaction {
   id: string;
@@ -55,6 +56,7 @@ export function TransactionModal({
   const [summary, setSummary] = useState({
     totalTransactions: 0,
     totalAmount: 0,
+    previousMonthTotal: null as number | null,
     month: '',
   });
 
@@ -94,6 +96,13 @@ export function TransactionModal({
       amountSort === 'asc' ? a.amount - b.amount : b.amount - a.amount
     );
   }, [transactions, amountSort]);
+
+  const percentageChange = useMemo(() => {
+    if (summary.previousMonthTotal === null || summary.previousMonthTotal === 0) {
+      return null;
+    }
+    return ((summary.totalAmount - summary.previousMonthTotal) / summary.previousMonthTotal) * 100;
+  }, [summary.totalAmount, summary.previousMonthTotal]);
 
   const cycleAmountSort = () => {
     setAmountSort((prev) =>
@@ -146,6 +155,14 @@ export function TransactionModal({
                 <div className="text-xl font-bold">
                   {formatCurrency(summary.totalAmount)}
                 </div>
+                {percentageChange !== null && (
+                  <div className={cn(
+                    "text-xs mt-1",
+                    percentageChange > 0 ? "text-red-500" : "text-green-500"
+                  )}>
+                    {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
