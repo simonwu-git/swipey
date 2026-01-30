@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,8 +12,6 @@ import {
 import {
   ChartContainer,
   ChartTooltip,
-  ChartLegend,
-  ChartLegendContent,
   type ChartConfig,
 } from '@/components/ui/chart';
 import {
@@ -35,47 +34,48 @@ interface SpendingLineChartProps {
   onMonthClick?: (month: string) => void;
 }
 
-// Custom tooltip content with adjustable spacing
-function CustomTooltipContent({ active, payload, label }: any) {
+// Format currency for display
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+// Custom tooltip content showing total and per-account breakdown
+function CustomTooltipContent({ active, payload, label, accounts }: any) {
   if (!active || !payload?.length) {
     return null;
   }
 
-  // Format currency for display
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const dataPoint = payload[0]?.payload;
+  const total = dataPoint?.Total || 0;
 
   return (
     <div className={cn(
       "border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl"
     )}>
       <div className="font-medium mb-2">{label}</div>
-      <div className="grid gap-2">
-        {payload.map((item: any) => {
-          const accountName = item.name || item.dataKey;
-          const color = item.color || item.stroke;
-
-          return (
-            <div key={accountName} className="flex items-center gap-3">
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              <div className="flex flex-1 justify-between items-center gap-4">
-                <span className="text-muted-foreground">{accountName}</span>
-                <span className="text-foreground font-mono font-medium tabular-nums">
-                  {formatCurrency(item.value)}
-                </span>
-              </div>
+      <div className="font-semibold mb-2">
+        Total: {formatCurrency(total)}
+      </div>
+      <div className="grid gap-1.5 border-t pt-2">
+        {accounts.map((account: string, idx: number) => (
+          <div key={account} className="flex items-center gap-3">
+            <div
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: getAccountColor(account, idx) }}
+            />
+            <div className="flex flex-1 justify-between items-center gap-4">
+              <span className="text-muted-foreground">{account}</span>
+              <span className="text-foreground font-mono font-medium tabular-nums">
+                {formatCurrency(dataPoint[account] || 0)}
+              </span>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -130,22 +130,20 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
     return monthTemplate;
   }, [data, selectedYear, accounts]);
 
+  // Add Total to chart data
+  const chartData = useMemo(() => {
+    return filteredData.map(item => ({
+      ...item,
+      Total: accounts.reduce((sum, acc) => sum + (Number(item[acc]) || 0), 0)
+    }));
+  }, [filteredData, accounts]);
+
   // Handle click on chart - receives the data point directly
   const handleClick = (clickData: any) => {
     // When clicking on a data point, clickData will have the month property
     if (clickData && clickData.month && onMonthClick) {
       onMonthClick(clickData.month);
     }
-  };
-
-  // Format currency for Y-axis and tooltip
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
   };
 
   // Format month for X-axis (e.g., "2024-01" -> "Jan 2024")
@@ -156,27 +154,9 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
-  // Build chart config dynamically based on accounts
-  // Use both original and sanitized keys so legend can find the labels
-  const chartConfig: ChartConfig = accounts.reduce((config, accountName, index) => {
-    const sanitizedKey = accountName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-    const color = getAccountColor(accountName, index);
-
-    config[sanitizedKey] = {
-      label: accountName,
-      color: color,
-    };
-    // Also add the original account name as a key for legend lookup
-    config[accountName] = {
-      label: accountName,
-      color: color,
-    };
-    return config;
-  }, {} as ChartConfig);
-
-  // Map account names to sanitized keys for CSS variables
-  const getColorKey = (accountName: string) => {
-    return accountName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+  // Simple chart config for single Total line
+  const chartConfig: ChartConfig = {
+    total: { label: 'Total Spend', color: '#3b82f6' }
   };
 
   return (
@@ -196,23 +176,38 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
         </Select>
       </div>
       <ChartContainer config={chartConfig} className="h-[400px]">
-        <LineChart
-          data={filteredData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        <ComposedChart
+          data={chartData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <defs>
+            <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            horizontal={true}
+            vertical={false}
+            strokeDasharray="0"
+            stroke="currentColor"
+            strokeOpacity={0.08}
+          />
           <XAxis
             dataKey="month"
             tickFormatter={formatMonth}
             tickLine={false}
             axisLine={false}
-            style={{ fontSize: '12px' }}
+            tick={{ fill: 'currentColor', opacity: 0.5, fontSize: 11 }}
+            dy={10}
           />
           <YAxis
             tickFormatter={formatCurrency}
             tickLine={false}
             axisLine={false}
-            style={{ fontSize: '12px' }}
+            tick={{ fill: 'currentColor', opacity: 0.5, fontSize: 11 }}
+            dx={-5}
+            width={70}
           />
           <ChartTooltip
             content={({ active, payload, label }) => (
@@ -220,35 +215,32 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
                 active={active}
                 payload={payload}
                 label={formatMonth(label as string)}
+                accounts={accounts}
               />
             )}
           />
-          <ChartLegend content={<ChartLegendContent />} />
-          {accounts.map((accountName) => {
-            const colorKey = getColorKey(accountName);
-            return (
-              <Line
-                key={accountName}
-                type="monotone"
-                dataKey={accountName}
-                stroke={`var(--color-${colorKey})`}
-                strokeWidth={2}
-                dot={{
-                  fill: `var(--color-${colorKey})`,
-                  r: 4,
-                  cursor: 'pointer',
-                  strokeWidth: 0,
-                }}
-                activeDot={{
-                  r: 6,
-                  cursor: 'pointer',
-                  onClick: (_e: any, payload: any) => handleClick(payload.payload)
-                }}
-                onClick={handleClick}
-              />
-            );
-          })}
-        </LineChart>
+          <Area
+            type="monotone"
+            dataKey="Total"
+            stroke="none"
+            fill="url(#totalGradient)"
+          />
+          <Line
+            type="monotone"
+            dataKey="Total"
+            stroke="var(--color-total)"
+            strokeWidth={1.5}
+            dot={{ r: 2.5, fill: 'var(--color-total)', strokeWidth: 0 }}
+            activeDot={{
+              r: 5,
+              fill: 'var(--color-total)',
+              stroke: 'var(--background)',
+              strokeWidth: 2,
+              cursor: 'pointer',
+              onClick: (_e: any, payload: any) => handleClick(payload.payload)
+            }}
+          />
+        </ComposedChart>
       </ChartContainer>
     </div>
   );
