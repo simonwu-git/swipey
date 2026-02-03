@@ -14,13 +14,6 @@ import {
   ChartTooltip,
   type ChartConfig,
 } from '@/components/ui/chart';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { getAccountColor } from '@/lib/accountColors';
 import { cn } from '@/lib/utils';
 
@@ -81,54 +74,24 @@ function CustomTooltipContent({ active, payload, label, accounts }: any) {
   );
 }
 
+type TimeRange = '3M' | '6M' | '1Y' | 'ALL';
+
 export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', onMonthClick }: SpendingLineChartProps) {
-  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
 
-  // Extract unique years from data
-  const availableYears = useMemo(() => {
-    const years = new Set<string>();
-    data.forEach(item => {
-      if (item.month) {
-        const year = item.month.split('-')[0];
-        years.add(year);
-      }
-    });
-    return Array.from(years).sort().reverse();
-  }, [data]);
-
-  // Filter and transform data based on selected year
+  // Filter data based on selected time range
   const filteredData = useMemo(() => {
-    if (selectedYear === 'all') {
+    if (timeRange === 'ALL') {
       return data;
     }
 
-    // Create a template with all 12 months for the selected year
-    const monthTemplate: Array<{ month: string; [key: string]: string | number }> = [];
-    for (let m = 1; m <= 12; m++) {
-      const monthStr = `${selectedYear}-${String(m).padStart(2, '0')}`;
-      const entry: { month: string; [key: string]: string | number } = { month: monthStr };
-      // Initialize all accounts to 0
-      accounts.forEach(acc => {
-        entry[acc] = 0;
-      });
-      monthTemplate.push(entry);
-    }
+    const now = new Date();
+    const monthsBack = timeRange === '3M' ? 3 : timeRange === '6M' ? 6 : 12;
+    const cutoffDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
+    const cutoffMonth = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // Fill in actual data
-    data.forEach(item => {
-      if (item.month && item.month.startsWith(selectedYear)) {
-        const idx = monthTemplate.findIndex(t => t.month === item.month);
-        if (idx !== -1) {
-          // Copy all values from the actual data
-          Object.keys(item).forEach(key => {
-            monthTemplate[idx][key] = item[key];
-          });
-        }
-      }
-    });
-
-    return monthTemplate;
-  }, [data, selectedYear, accounts]);
+    return data.filter(item => item.month >= cutoffMonth);
+  }, [data, timeRange]);
 
   // Add Total to chart data
   const chartData = useMemo(() => {
@@ -161,20 +124,7 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Years</SelectItem>
-            {availableYears.map(year => (
-              <SelectItem key={year} value={year}>{year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <ChartContainer config={chartConfig} className="h-[400px]">
         <ComposedChart
           data={chartData}
@@ -242,6 +192,22 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
           />
         </ComposedChart>
       </ChartContainer>
+      <div className="flex justify-center gap-1 mt-4">
+        {(['3M', '6M', '1Y', 'ALL'] as const).map((range) => (
+          <button
+            key={range}
+            onClick={() => setTimeRange(range)}
+            className={cn(
+              "px-3 py-1 text-sm rounded-md transition-colors",
+              timeRange === range
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            {range}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
