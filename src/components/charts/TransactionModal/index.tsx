@@ -16,27 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { CategorySankeyChart } from './CategorySankeyChart';
 import { cn } from '@/lib/utils';
-
-interface Transaction {
-  id: string;
-  date: string;
-  accountId: string;
-  accountName: string;
-  description: string;
-  category: string | null;
-  amount: number;
-}
+import { Transaction } from './types';
+import { SankeySection } from './SankeySection';
+import { TransactionTableSection } from './TransactionTableSection';
 
 function SkeletonBar({ width, className }: { width: string; className?: string }) {
   return (
@@ -46,39 +30,6 @@ function SkeletonBar({ width, className }: { width: string; className?: string }
     />
   );
 }
-
-function SkeletonRow({ widths }: { widths: number[] }) {
-  return (
-    <TableRow>
-      <TableCell>
-        <SkeletonBar width={`${widths[0]}%`} />
-      </TableCell>
-      <TableCell>
-        <SkeletonBar width={`${widths[1]}%`} />
-      </TableCell>
-      <TableCell>
-        <SkeletonBar width={`${widths[2]}%`} />
-      </TableCell>
-      <TableCell>
-        <SkeletonBar width={`${widths[3]}%`} />
-      </TableCell>
-      <TableCell className="text-right">
-        <SkeletonBar width={`${widths[4]}%`} className="ml-auto" />
-      </TableCell>
-    </TableRow>
-  );
-}
-
-const skeletonWidths = [
-  [70, 80, 90, 60, 50],
-  [50, 60, 70, 50, 40],
-  [80, 70, 85, 70, 60],
-  [60, 90, 60, 40, 55],
-  [75, 50, 80, 65, 45],
-  [55, 75, 95, 55, 50],
-  [65, 85, 75, 45, 60],
-  [80, 65, 65, 75, 40],
-];
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -294,86 +245,20 @@ export function TransactionModal({
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
             {/* Left: Sankey Chart */}
             <div className="lg:w-[55%] min-h-[300px] relative">
-              {transactions.length > 0 ? (
-                <>
-                  <CategorySankeyChart transactions={transactions} height="100%" />
-                  {isLoading && (
-                    <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg">
-                      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  )}
-                </>
-              ) : isLoading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
-                  No data to display
-                </div>
-              )}
+              <SankeySection transactions={transactions} isLoading={isLoading} />
             </div>
 
             {/* Right: Transaction Table */}
             <div className="flex-1 overflow-auto border rounded-lg min-h-[300px]">
-              {isLoading ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {skeletonWidths.map((widths, index) => (
-                      <SkeletonRow key={index} widths={widths} />
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : transactions.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  No transactions found for this period
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead
-                        className="text-right cursor-pointer select-none hover:text-foreground"
-                        onClick={cycleAmountSort}
-                      >
-                        Amount{amountSort === 'asc' ? ' ▲' : amountSort === 'desc' ? ' ▼' : ''}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedTransactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell className="whitespace-nowrap">
-                          {formatDate(transaction.date)}
-                        </TableCell>
-                        <TableCell>{transaction.accountName}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {transaction.description}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.category || <span className="text-gray-400">—</span>}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(transaction.amount)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+              <TransactionTableSection
+                transactions={transactions}
+                sortedTransactions={sortedTransactions}
+                isLoading={isLoading}
+                amountSort={amountSort}
+                onCycleSort={cycleAmountSort}
+                formatDate={formatDate}
+                formatCurrency={formatCurrency}
+              />
             </div>
           </div>
         </div>
