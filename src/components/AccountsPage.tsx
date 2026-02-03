@@ -102,6 +102,24 @@ export function AccountsPage() {
     setShowTransactionModal(true)
   }
 
+  const handleNavigateMonth = (direction: 'prev' | 'next') => {
+    const availableMonths = aggregateData.map(d => d.month)
+    const currentIndex = availableMonths.indexOf(selectedMonth!)
+    const newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1
+    if (newIndex >= 0 && newIndex < availableMonths.length) {
+      setSelectedMonth(availableMonths[newIndex])
+    }
+  }
+
+  const getNavigationState = () => {
+    const availableMonths = aggregateData.map(d => d.month)
+    const currentIndex = availableMonths.indexOf(selectedMonth!)
+    return {
+      canNavigatePrev: currentIndex > 0,
+      canNavigateNext: currentIndex < availableMonths.length - 1,
+    }
+  }
+
   const handleFormSubmit = async (accountData: Omit<Account, 'id' | 'createdAt'>) => {
     try {
       const url = editingAccount ? `/api/accounts/${editingAccount.id}` : '/api/accounts'
@@ -254,6 +272,9 @@ export function AccountsPage() {
         onClose={() => setShowTransactionModal(false)}
         month={selectedMonth}
         accounts={accounts.map(acc => ({ id: acc.id, name: acc.name }))}
+        onNavigateMonth={handleNavigateMonth}
+        canNavigatePrev={getNavigationState().canNavigatePrev}
+        canNavigateNext={getNavigationState().canNavigateNext}
       />
     </div>
   )

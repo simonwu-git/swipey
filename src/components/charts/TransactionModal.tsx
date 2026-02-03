@@ -7,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -36,11 +38,56 @@ interface Transaction {
   amount: number;
 }
 
+function SkeletonBar({ width, className }: { width: string; className?: string }) {
+  return (
+    <div
+      className={cn("h-4 bg-muted animate-pulse rounded", className)}
+      style={{ width }}
+    />
+  );
+}
+
+function SkeletonRow({ widths }: { widths: number[] }) {
+  return (
+    <TableRow>
+      <TableCell>
+        <SkeletonBar width={`${widths[0]}%`} />
+      </TableCell>
+      <TableCell>
+        <SkeletonBar width={`${widths[1]}%`} />
+      </TableCell>
+      <TableCell>
+        <SkeletonBar width={`${widths[2]}%`} />
+      </TableCell>
+      <TableCell>
+        <SkeletonBar width={`${widths[3]}%`} />
+      </TableCell>
+      <TableCell className="text-right">
+        <SkeletonBar width={`${widths[4]}%`} className="ml-auto" />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+const skeletonWidths = [
+  [70, 80, 90, 60, 50],
+  [50, 60, 70, 50, 40],
+  [80, 70, 85, 70, 60],
+  [60, 90, 60, 40, 55],
+  [75, 50, 80, 65, 45],
+  [55, 75, 95, 55, 50],
+  [65, 85, 75, 45, 60],
+  [80, 65, 65, 75, 40],
+];
+
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   month: string | null;
   accounts: Array<{ id: string; name: string }>;
+  onNavigateMonth?: (direction: 'prev' | 'next') => void;
+  canNavigatePrev?: boolean;
+  canNavigateNext?: boolean;
 }
 
 export function TransactionModal({
@@ -48,6 +95,9 @@ export function TransactionModal({
   onClose,
   month,
   accounts,
+  onNavigateMonth,
+  canNavigatePrev = false,
+  canNavigateNext = false,
 }: TransactionModalProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredAccountId, setFilteredAccountId] = useState<string>('all');
@@ -66,6 +116,21 @@ export function TransactionModal({
       fetchTransactions();
     }
   }, [isOpen, month, filteredAccountId]);
+
+  useEffect(() => {
+    if (!isOpen || !onNavigateMonth) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && canNavigatePrev) {
+        onNavigateMonth('prev');
+      } else if (e.key === 'ArrowRight' && canNavigateNext) {
+        onNavigateMonth('next');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onNavigateMonth, canNavigatePrev, canNavigateNext]);
 
   const fetchTransactions = async () => {
     if (!month) return;
@@ -134,10 +199,37 @@ export function TransactionModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] sm:max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>
-            {month ? `Transactions - ${formatMonth(month)}` : 'Transactions'}
-          </DialogTitle>
+        <DialogHeader className="relative">
+          <DialogTitle>Transactions</DialogTitle>
+          {month && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 pointer-events-auto">
+                {onNavigateMonth && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onNavigateMonth('prev')}
+                    disabled={!canNavigatePrev}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                <span className="text-sm font-medium">{formatMonth(month)}</span>
+                {onNavigateMonth && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onNavigateMonth('next')}
+                    disabled={!canNavigateNext}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
@@ -146,22 +238,35 @@ export function TransactionModal({
             <Card>
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground">Total Transactions</div>
-                <div className="text-xl font-bold">{summary.totalTransactions}</div>
+                {isLoading ? (
+                  <SkeletonBar width="60%" className="h-6 mt-1" />
+                ) : (
+                  <div className="text-xl font-bold">{summary.totalTransactions}</div>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground">Total Spending</div>
-                <div className="text-xl font-bold">
-                  {formatCurrency(summary.totalAmount)}
-                </div>
-                {percentageChange !== null && (
-                  <div className={cn(
-                    "text-xs mt-1",
-                    percentageChange > 0 ? "text-red-500" : "text-green-500"
-                  )}>
-                    {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
-                  </div>
+                {isLoading ? (
+                  <>
+                    <SkeletonBar width="80%" className="h-6 mt-1" />
+                    <SkeletonBar width="50%" className="h-3 mt-2" />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xl font-bold">
+                      {formatCurrency(summary.totalAmount)}
+                    </div>
+                    {percentageChange !== null && (
+                      <div className={cn(
+                        "text-xs mt-1",
+                        percentageChange > 0 ? "text-red-500" : "text-green-500"
+                      )}>
+                        {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -188,18 +293,46 @@ export function TransactionModal({
           {/* Main content area - side by side on large screens */}
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
             {/* Left: Sankey Chart */}
-            {!isLoading && transactions.length > 0 && (
-              <div className="lg:w-[55%] min-h-[300px]">
-                <CategorySankeyChart transactions={transactions} height="100%" />
-              </div>
-            )}
+            <div className="lg:w-[55%] min-h-[300px] relative">
+              {transactions.length > 0 ? (
+                <>
+                  <CategorySankeyChart transactions={transactions} height="100%" />
+                  {isLoading && (
+                    <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg">
+                      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </>
+              ) : isLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  No data to display
+                </div>
+              )}
+            </div>
 
             {/* Right: Transaction Table */}
             <div className="flex-1 overflow-auto border rounded-lg min-h-[300px]">
               {isLoading ? (
-                <div className="p-8 text-center text-gray-500">
-                  Loading transactions...
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {skeletonWidths.map((widths, index) => (
+                      <SkeletonRow key={index} widths={widths} />
+                    ))}
+                  </TableBody>
+                </Table>
               ) : transactions.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   No transactions found for this period
