@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import Image from 'next/image'
 import './globals.css'
+import { ThemeScript } from '@/components/ThemeScript'
+import { ThemeProvider } from '@/lib/theme'
+import { NavClient } from '@/components/NavClient'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,33 +18,21 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={inter.className}>
-        <nav className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Image
-                  src="/rocket.png"
-                  alt="Rocket icon"
-                  width={65}
-                  height={65}
-                  className="object-contain mix-blend-multiply"
-                  style={{ filter: 'brightness(1.2) contrast(1.1)' }}
-                />
-              </div>
-              <div className="flex space-x-4">
-                <a
-                  href="/accounts"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Accounts
-                </a>
+        <ThemeProvider>
+          <nav className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-end">
+                <NavClient />
               </div>
             </div>
-          </div>
-        </nav>
-        {children}
+          </nav>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
