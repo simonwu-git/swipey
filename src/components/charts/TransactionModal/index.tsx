@@ -243,7 +243,7 @@ export function TransactionModal({
           </div>
 
           {/* Claude Insights */}
-          <InsightsSection month={month} disabled={isLoading} />
+          <InsightsSection month={month} />
 
           {/* Main content area - side by side on large screens */}
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">

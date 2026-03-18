@@ -56,8 +56,24 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log(`[ask-claude] Request for month=${month}`)
+    const refresh = searchParams.get('refresh') === 'true'
+
+    console.log(`[ask-claude] Request for month=${month}${refresh ? ' (refresh)' : ''}`)
     const startTime = Date.now()
+
+    // Check cache first (unless refresh requested)
+    if (!refresh) {
+      const cached = await prisma.monthlyInsight.findUnique({ where: { month } })
+      if (cached) {
+        console.log(`[ask-claude] Cache hit for ${month}`)
+        return NextResponse.json({
+          answer: cached.answer,
+          month: cached.month,
+          totalAmount: Number(cached.totalAmount),
+          cached: true,
+        })
+      }
+    }
 
     const [year, monthNum] = month.split('-').map(Number)
     const startDate = new Date(year, monthNum - 1, 1)
@@ -155,6 +171,14 @@ export async function GET(request: NextRequest) {
 
     const result = JSON.parse(stdout)
     console.log(`[ask-claude] Done for ${month} — total ${((Date.now() - startTime) / 1000).toFixed(2)}s`)
+
+    // Store in cache (upsert to handle refresh case)
+    await prisma.monthlyInsight.upsert({
+      where: { month },
+      update: { answer: result.result, totalAmount },
+      create: { month, answer: result.result, totalAmount },
+    })
+
     return NextResponse.json({ answer: result.result, month, totalAmount })
   } catch (error) {
     console.error('[ask-claude]', error)

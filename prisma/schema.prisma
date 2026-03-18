@@ -37,6 +37,16 @@ model Transaction {
   @@map("transactions")
 }
 
+model MonthlyInsight {
+  id          String   @id @default(cuid())
+  month       String   @unique       // "YYYY-MM" format, one insight per month
+  answer      String                 // PostgreSQL text type
+  totalAmount Decimal  @map("total_amount")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("monthly_insights")
+}
+
 model ImportLog {
   id             String   @id @default(cuid())
   accountId      String   @map("account_id")
