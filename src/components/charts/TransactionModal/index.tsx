@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { Transaction } from './types';
 import { SankeySection } from './SankeySection';
 import { TransactionTableSection } from './TransactionTableSection';
+import { InsightsSection } from './InsightsSection';
 
 function SkeletonBar({ width, className }: { width: string; className?: string }) {
   return (
@@ -240,6 +241,9 @@ export function TransactionModal({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Claude Insights */}
+          <InsightsSection month={month} disabled={isLoading} />
 
           {/* Main content area - side by side on large screens */}
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
