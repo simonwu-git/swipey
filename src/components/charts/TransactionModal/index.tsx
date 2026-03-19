@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Transaction } from './types';
 import { SankeySection } from './SankeySection';
@@ -184,75 +185,74 @@ export function TransactionModal({
           )}
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-3">
-            <Card>
-              <CardContent className="p-3">
-                <div className="text-xs text-muted-foreground">Total Transactions</div>
-                {isLoading ? (
-                  <SkeletonBar width="60%" className="h-6 mt-1" />
-                ) : (
-                  <div className="text-xl font-bold">{summary.totalTransactions}</div>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3">
-                <div className="text-xs text-muted-foreground">Total Spending</div>
-                {isLoading ? (
-                  <>
-                    <SkeletonBar width="80%" className="h-6 mt-1" />
-                    <SkeletonBar width="50%" className="h-3 mt-2" />
-                  </>
-                ) : (
-                  <>
-                    <div className="text-xl font-bold">
-                      {formatCurrency(summary.totalAmount)}
-                    </div>
-                    {percentageChange !== null && (
-                      <div className={cn(
-                        "text-xs mt-1",
-                        percentageChange > 0 ? "text-red-500" : "text-green-500"
-                      )}>
-                        {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
+        <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="visualize">Visualize</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4 overflow-hidden flex flex-col">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardContent className="p-3">
+                  <div className="text-xs text-muted-foreground">Total Transactions</div>
+                  {isLoading ? (
+                    <SkeletonBar width="60%" className="h-6 mt-1" />
+                  ) : (
+                    <div className="text-xl font-bold">{summary.totalTransactions}</div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3">
+                  <div className="text-xs text-muted-foreground">Total Spending</div>
+                  {isLoading ? (
+                    <>
+                      <SkeletonBar width="80%" className="h-6 mt-1" />
+                      <SkeletonBar width="50%" className="h-3 mt-2" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xl font-bold">
+                        {formatCurrency(summary.totalAmount)}
                       </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Account Filter */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Account:</label>
-            <Select value={filteredAccountId} onValueChange={setFilteredAccountId}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Accounts</SelectItem>
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Claude Insights */}
-          <InsightsSection month={month} />
-
-          {/* Main content area - side by side on large screens */}
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4">
-            {/* Left: Sankey Chart */}
-            <div className="lg:w-[55%] min-h-[300px] relative">
-              <SankeySection transactions={transactions} isLoading={isLoading} />
+                      {percentageChange !== null && (
+                        <div className={cn(
+                          "text-xs mt-1",
+                          percentageChange > 0 ? "text-red-500" : "text-green-500"
+                        )}>
+                          {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Right: Transaction Table */}
+            {/* Account Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Account:</label>
+              <Select value={filteredAccountId} onValueChange={setFilteredAccountId}>
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Claude Insights */}
+            <InsightsSection month={month} />
+
+            {/* Transaction Table */}
             <div className="flex-1 overflow-auto border rounded-lg min-h-[300px]">
               <TransactionTableSection
                 transactions={transactions}
@@ -264,8 +264,14 @@ export function TransactionModal({
                 formatCurrency={formatCurrency}
               />
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="visualize" className="flex-1 overflow-hidden">
+            <div className="h-[60vh] relative">
+              <SankeySection transactions={transactions} isLoading={isLoading} />
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

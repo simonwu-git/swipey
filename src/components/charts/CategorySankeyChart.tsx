@@ -238,7 +238,8 @@ export function CategorySankeyChart({
           {accountCount} {accountCount === 1 ? 'account' : 'accounts'} → {categoryCount} {categoryCount === 1 ? 'category' : 'categories'}
         </span>
       </div>
-      <div className="border rounded-lg bg-card p-4 flex-1">
+      <div className="border rounded-lg bg-card p-4 flex-1 overflow-x-auto">
+        <div className="min-w-[600px] h-full">
         <ResponsiveContainer width="100%" height={height}>
           <Sankey
             data={sankeyData}
@@ -251,6 +252,7 @@ export function CategorySankeyChart({
             margin={{ top: 10, right: 200, bottom: 10, left: 150 }}
           />
         </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
