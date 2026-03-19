@@ -192,46 +192,49 @@ export function TransactionModal({
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 overflow-hidden flex flex-col">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <Card>
-                <CardContent className="p-3">
-                  <div className="text-xs text-muted-foreground">Total Transactions</div>
-                  {isLoading ? (
-                    <SkeletonBar width="60%" className="h-6 mt-1" />
-                  ) : (
-                    <div className="text-xl font-bold">{summary.totalTransactions}</div>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="text-xs text-muted-foreground">Total Spending</div>
-                  {isLoading ? (
-                    <>
-                      <SkeletonBar width="80%" className="h-6 mt-1" />
-                      <SkeletonBar width="50%" className="h-3 mt-2" />
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-xl font-bold">
-                        {formatCurrency(summary.totalAmount)}
-                      </div>
-                      {percentageChange !== null && (
-                        <div className={cn(
-                          "text-xs mt-1",
-                          percentageChange > 0 ? "text-red-500" : "text-green-500"
-                        )}>
-                          {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
+            {/* Total Spending & Insights */}
+            <div className="flex gap-3">
+              <Card className="w-[200px] shrink-0">
+                <CardContent className="p-3 space-y-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Total Transactions</div>
+                    {isLoading ? (
+                      <SkeletonBar width="60%" className="h-6 mt-1" />
+                    ) : (
+                      <div className="text-xl font-bold">{summary.totalTransactions}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Total Spending</div>
+                    {isLoading ? (
+                      <>
+                        <SkeletonBar width="80%" className="h-6 mt-1" />
+                        <SkeletonBar width="50%" className="h-3 mt-2" />
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-xl font-bold">
+                          {formatCurrency(summary.totalAmount)}
                         </div>
-                      )}
-                    </>
-                  )}
+                        {percentageChange !== null && (
+                          <div className={cn(
+                            "text-xs mt-1",
+                            percentageChange > 0 ? "text-red-500" : "text-green-500"
+                          )}>
+                            {percentageChange > 0 ? '▲' : '▼'} {Math.abs(percentageChange).toFixed(0)}% vs last month
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
+              <div className="flex-1 min-w-0">
+                <InsightsSection month={month} />
+              </div>
             </div>
 
-            {/* Account Filter */}
+            {/* Account Filter & Transaction Count */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Account:</label>
               <Select value={filteredAccountId} onValueChange={setFilteredAccountId}>
@@ -248,9 +251,6 @@ export function TransactionModal({
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Claude Insights */}
-            <InsightsSection month={month} />
 
             {/* Transaction Table */}
             <div className="flex-1 overflow-auto border rounded-lg min-h-[300px]">

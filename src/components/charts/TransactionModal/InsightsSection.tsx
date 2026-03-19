@@ -150,7 +150,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                   </Button>
                 ))}
               </div>
-              <div className="text-sm max-h-[200px] overflow-auto">
+              <div className="text-sm max-h-[150px] overflow-auto">
                 {renderContent(
                   parsed[activeSection],
                   BULLET_SECTIONS.includes(activeSection)
@@ -158,7 +158,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               </div>
             </>
           ) : (
-            <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-auto">
+            <div className="text-sm whitespace-pre-wrap max-h-[150px] overflow-auto">
               {insight}
             </div>
           )}
