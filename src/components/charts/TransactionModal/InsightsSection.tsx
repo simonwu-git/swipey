@@ -1,18 +1,61 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import {
+  Sparkles,
+  Loader2,
+  RefreshCw,
+  FileText,
+  TrendingUp,
+  ArrowLeftRight,
+  Lightbulb,
+} from 'lucide-react';
+import { parseInsights } from './parseInsights';
+
+const SECTIONS = [
+  { key: 'summary', label: 'Summary', Icon: FileText },
+  { key: 'patterns', label: 'Patterns', Icon: TrendingUp },
+  { key: 'comparison', label: 'Comparison', Icon: ArrowLeftRight },
+  { key: 'suggestions', label: 'Tips', Icon: Lightbulb },
+] as const;
+
+type SectionKey = (typeof SECTIONS)[number]['key'];
+
+const BULLET_SECTIONS: SectionKey[] = ['patterns', 'suggestions'];
 
 interface InsightsSectionProps {
   month: string | null;
+}
+
+function renderContent(text: string, isBulletSection: boolean) {
+  if (!text) return <span className="text-muted-foreground italic">No data</span>;
+
+  if (isBulletSection) {
+    // Split on newlines, filter empty, strip leading bullet chars
+    const items = text
+      .split('\n')
+      .map((line) => line.replace(/^[\s•\-*]+/, '').trim())
+      .filter(Boolean);
+
+    return (
+      <ul className="list-disc list-inside space-y-1">
+        {items.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return <p>{text}</p>;
 }
 
 export function InsightsSection({ month }: InsightsSectionProps) {
   const [insight, setInsight] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionKey>('summary');
 
   const fetchInsights = useCallback(async (refresh = false) => {
     if (!month) return;
@@ -34,14 +77,20 @@ export function InsightsSection({ month }: InsightsSectionProps) {
     }
   }, [month]);
 
-  // Auto-fetch when month changes
+  // Reset state when month changes
   useEffect(() => {
     setInsight(null);
     setError(null);
+    setActiveSection('summary');
     if (month) {
       fetchInsights();
     }
   }, [month, fetchInsights]);
+
+  const parsed = useMemo(() => {
+    if (!insight) return null;
+    return parseInsights(insight);
+  }, [insight]);
 
   if (isLoading) {
     return (
@@ -84,9 +133,35 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
-          <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-auto">
-            {insight}
-          </div>
+
+          {parsed ? (
+            <>
+              <div className="flex gap-1 mb-2 flex-wrap">
+                {SECTIONS.map(({ key, label, Icon }) => (
+                  <Button
+                    key={key}
+                    variant={activeSection === key ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                    onClick={() => setActiveSection(key)}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <div className="text-sm max-h-[200px] overflow-auto">
+                {renderContent(
+                  parsed[activeSection],
+                  BULLET_SECTIONS.includes(activeSection)
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-auto">
+              {insight}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
