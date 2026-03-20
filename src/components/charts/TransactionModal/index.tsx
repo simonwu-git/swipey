@@ -153,7 +153,7 @@ export function TransactionModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] sm:max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="relative">
-          <DialogTitle>Transactions</DialogTitle>
+          <DialogTitle className="sr-only">Transactions</DialogTitle>
           {month && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="flex items-center gap-2 pointer-events-auto">

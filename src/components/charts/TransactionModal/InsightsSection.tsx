@@ -56,7 +56,6 @@ export function InsightsSection({ month }: InsightsSectionProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>('summary');
-
   const fetchInsights = useCallback(async (refresh = false) => {
     if (!month) return;
     setIsLoading(true);
@@ -92,34 +91,30 @@ export function InsightsSection({ month }: InsightsSectionProps) {
     return parseInsights(insight);
   }, [insight]);
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-3 flex items-center gap-2 text-sm text-muted-foreground">
+  const renderBody = () => {
+    if (isLoading) {
+      return (
+        <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Analyzing spend...
-        </CardContent>
-      </Card>
-    );
-  }
+        </div>
+      );
+    }
 
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-3 flex items-center justify-between">
+    if (error) {
+      return (
+        <div className="flex-1 flex items-center justify-between">
           <span className="text-sm text-red-500">{error}</span>
           <Button variant="ghost" size="sm" onClick={() => fetchInsights()}>
             Retry
           </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+        </div>
+      );
+    }
 
-  if (insight) {
-    return (
-      <Card>
-        <CardContent className="p-3">
+    if (insight) {
+      return (
+        <>
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-purple-500" />
             <span className="text-sm font-medium">Insights</span>
@@ -133,7 +128,6 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
-
           {parsed ? (
             <>
               <div className="flex gap-1 mb-2 flex-wrap">
@@ -150,7 +144,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                   </Button>
                 ))}
               </div>
-              <div className="text-sm max-h-[150px] overflow-auto">
+              <div className="text-sm">
                 {renderContent(
                   parsed[activeSection],
                   BULLET_SECTIONS.includes(activeSection)
@@ -158,14 +152,27 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               </div>
             </>
           ) : (
-            <div className="text-sm whitespace-pre-wrap max-h-[150px] overflow-auto">
+            <div className="text-sm whitespace-pre-wrap flex-1 overflow-auto">
               {insight}
             </div>
           )}
-        </CardContent>
-      </Card>
-    );
-  }
+        </>
+      );
+    }
 
-  return null;
+    return (
+      <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
+        <Sparkles className="h-4 w-4 text-purple-500" />
+        Insights will appear here
+      </div>
+    );
+  };
+
+  return (
+    <Card className="h-full">
+      <CardContent className="p-3 h-full flex flex-col">
+        {renderBody()}
+      </CardContent>
+    </Card>
+  );
 }
