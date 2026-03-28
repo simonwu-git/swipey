@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/chart';
 import { getAccountColor } from '@/lib/accountColors';
 import { cn } from '@/lib/utils';
+import { usePrivacy } from '@/lib/privacy';
 
 interface SpendingLineChartProps {
   data: Array<{
@@ -27,18 +28,8 @@ interface SpendingLineChartProps {
   onMonthClick?: (month: string) => void;
 }
 
-// Format currency for display
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
-
 // Custom tooltip content showing total and per-account breakdown
-function CustomTooltipContent({ active, payload, label, accounts }: any) {
+function CustomTooltipContent({ active, payload, label, accounts, formatCurrency }: any) {
   if (!active || !payload?.length) {
     return null;
   }
@@ -77,6 +68,7 @@ function CustomTooltipContent({ active, payload, label, accounts }: any) {
 type TimeRange = '3M' | '6M' | '1Y' | 'ALL';
 
 export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', onMonthClick }: SpendingLineChartProps) {
+  const { formatCurrency } = usePrivacy();
   const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
 
   // Filter data based on selected time range
@@ -166,6 +158,7 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
                 payload={payload}
                 label={formatMonth(label as string)}
                 accounts={accounts}
+                formatCurrency={formatCurrency}
               />
             )}
           />

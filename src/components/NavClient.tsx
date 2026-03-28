@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ThemeToggle } from './ThemeToggle';
+import { PrivacyToggle } from './PrivacyToggle';
 
 export function NavClient() {
   return (
@@ -12,6 +13,7 @@ export function NavClient() {
       >
         Accounts
       </Link>
+      <PrivacyToggle />
       <ThemeToggle />
     </div>
   );

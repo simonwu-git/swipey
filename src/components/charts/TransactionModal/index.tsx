@@ -19,6 +19,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { usePrivacy } from '@/lib/privacy';
 import { Transaction } from './types';
 import { SankeySection } from './SankeySection';
 import { TransactionTableSection } from './TransactionTableSection';
@@ -55,6 +56,7 @@ export function TransactionModal({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredAccountId, setFilteredAccountId] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const { isPrivacyMode, formatCurrency } = usePrivacy();
   const [amountSort, setAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [summary, setSummary] = useState({
     totalTransactions: 0,
@@ -126,13 +128,6 @@ export function TransactionModal({
     setAmountSort((prev) =>
       prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none'
     );
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
   };
 
   const formatDate = (dateString: string) => {
@@ -216,7 +211,7 @@ export function TransactionModal({
                         <div className="text-xl font-bold">
                           {formatCurrency(summary.totalAmount)}
                         </div>
-                        {percentageChange !== null && (
+                        {percentageChange !== null && !isPrivacyMode && (
                           <div className={cn(
                             "text-xs mt-1",
                             percentageChange > 0 ? "text-red-500" : "text-green-500"

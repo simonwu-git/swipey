@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeScript } from '@/components/ThemeScript'
 import { ThemeProvider } from '@/lib/theme'
+import { PrivacyProvider } from '@/lib/privacy'
 import { NavClient } from '@/components/NavClient'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -24,14 +25,16 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <ThemeProvider>
-          <nav className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700">
-            <div className="container mx-auto px-4 py-4">
-              <div className="flex items-center justify-end">
-                <NavClient />
+          <PrivacyProvider>
+            <nav className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700">
+              <div className="container mx-auto px-4 py-4">
+                <div className="flex items-center justify-end">
+                  <NavClient />
+                </div>
               </div>
-            </div>
-          </nav>
-          {children}
+            </nav>
+            {children}
+          </PrivacyProvider>
         </ThemeProvider>
       </body>
     </html>

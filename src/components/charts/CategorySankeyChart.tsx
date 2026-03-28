@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Sankey, ResponsiveContainer, Rectangle } from 'recharts';
+import { usePrivacy } from '@/lib/privacy';
 
 interface Transaction {
   id: string;
@@ -50,8 +51,9 @@ const COLORS = [
 
 // Custom node renderer with labels - function form to preserve event handlers
 // Expects containerProps to have accountCount for distinguishing left (accounts) from right (categories)
-const createCustomNode = (accountCount: number, totalAmount: number) => {
+const createCustomNode = (accountCount: number, totalAmount: number, isPrivacyMode: boolean) => {
   const formatCurrency = (value: number) => {
+    if (isPrivacyMode) return '$•••••';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -61,6 +63,7 @@ const createCustomNode = (accountCount: number, totalAmount: number) => {
   };
 
   const formatPercentage = (value: number, total: number) => {
+    if (isPrivacyMode) return '••%';
     const percentage = (value / total) * 100;
     return percentage.toFixed(1) + '%';
   };
@@ -153,6 +156,7 @@ export function CategorySankeyChart({
   title = 'Account to Category Flow',
   height = 400,
 }: CategorySankeyChartProps) {
+  const { isPrivacyMode } = usePrivacy();
   const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
 
   const { sankeyData, accountCount } = useMemo((): { sankeyData: SankeyData; accountCount: number } => {
@@ -247,7 +251,7 @@ export function CategorySankeyChart({
             nodePadding={30}
             linkCurvature={0.5}
             iterations={32}
-            node={createCustomNode(accountCount, totalAmount)}
+            node={createCustomNode(accountCount, totalAmount, isPrivacyMode)}
             link={renderCustomLink}
             margin={{ top: 10, right: 200, bottom: 10, left: 150 }}
           />

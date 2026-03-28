@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   Lightbulb,
 } from 'lucide-react';
+import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
 
 const SECTIONS = [
@@ -52,6 +53,7 @@ function renderContent(text: string, isBulletSection: boolean) {
 }
 
 export function InsightsSection({ month }: InsightsSectionProps) {
+  const { isPrivacyMode } = usePrivacy();
   const [insight, setInsight] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,34 +130,36 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
-          {parsed ? (
-            <>
-              <div className="flex gap-1 mb-2 flex-wrap">
-                {SECTIONS.map(({ key, label, Icon }) => (
-                  <Button
-                    key={key}
-                    variant={activeSection === key ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 px-2 text-xs gap-1"
-                    onClick={() => setActiveSection(key)}
-                  >
-                    <Icon className="h-3 w-3" />
-                    {label}
-                  </Button>
-                ))}
+          <div className={isPrivacyMode ? 'blur-sm select-none' : ''}>
+            {parsed ? (
+              <>
+                <div className="flex gap-1 mb-2 flex-wrap">
+                  {SECTIONS.map(({ key, label, Icon }) => (
+                    <Button
+                      key={key}
+                      variant={activeSection === key ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1"
+                      onClick={() => setActiveSection(key)}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="text-sm">
+                  {renderContent(
+                    parsed[activeSection],
+                    BULLET_SECTIONS.includes(activeSection)
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-sm whitespace-pre-wrap flex-1 overflow-auto">
+                {insight}
               </div>
-              <div className="text-sm">
-                {renderContent(
-                  parsed[activeSection],
-                  BULLET_SECTIONS.includes(activeSection)
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="text-sm whitespace-pre-wrap flex-1 overflow-auto">
-              {insight}
-            </div>
-          )}
+            )}
+          </div>
         </>
       );
     }
