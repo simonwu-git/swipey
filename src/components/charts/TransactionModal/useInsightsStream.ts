@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readNdjsonLines } from '@/lib/ndjson';
 
-// Matches the NDJSON event shapes emitted by /api/ask-claude?stream=true.
+// Matches the NDJSON event shapes emitted by /api/ask-claude.
 type StreamEvent =
   | { type: 'meta'; month: string; totalAmount: number; cached: boolean }
   | { type: 'delta'; text: string }
@@ -41,7 +41,7 @@ export function useInsightsStream(month: string | null): UseInsightsStreamResult
     setInsight(null);
 
     try {
-      const url = `/api/ask-claude?month=${month}&stream=true${refresh ? '&refresh=true' : ''}`;
+      const url = `/api/ask-claude?month=${month}${refresh ? '&refresh=true' : ''}`;
       const response = await fetch(url, { signal: controller.signal });
 
       // Pre-stream failures (bad month / no transactions) come back as JSON.

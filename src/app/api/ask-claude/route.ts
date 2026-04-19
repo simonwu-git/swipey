@@ -1,47 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn, type ChildProcess } from 'child_process'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { extractTextDelta } from '@/lib/claudeStream'
-
-const CLAUDE_PATH = '/Users/simonwu/.local/bin/claude'
-
-// Using spawn with stdin:'ignore' is required - exec() leaves stdin pipe open
-// which causes the CLI to hang even in headless mode (-p flag)
-function runClaude(prompt: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(CLAUDE_PATH, ['-p', prompt, '--output-format', 'json'], {
-      env: { ...process.env, HOME: '/Users/simonwu' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-
-    let stdout = ''
-    let stderr = ''
-
-    child.stdout.on('data', (data) => { stdout += data })
-    child.stderr.on('data', (data) => { stderr += data })
-    child.on('error', reject)
-    child.on('close', (code) => {
-      code === 0 ? resolve(stdout) : reject(new Error(`Exit ${code}: ${stderr}`))
-    })
-  })
-}
-
-function spawnClaudeStream(prompt: string): ChildProcess {
-  return spawn(
-    CLAUDE_PATH,
-    [
-      '-p', prompt,
-      '--output-format', 'stream-json',
-      '--include-partial-messages',
-      '--verbose',
-    ],
-    {
-      env: { ...process.env, HOME: '/Users/simonwu' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  )
-}
+import { streamClaudeDeltas } from '@/lib/claudeStream'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -166,115 +126,70 @@ function buildStreamResponse(opts: {
 }): Response {
   const { month, totalAmount, cachedAnswer, prompt } = opts
   const encoder = new TextEncoder()
-  let child: ChildProcess | null = null
+  const ac = new AbortController()
 
   const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      let closed = false
-      const emit = (event: unknown) => {
-        if (closed) return
+    async start(controller) {
+      const enqueue = (event: unknown) => {
         try {
           controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
         } catch {
-          // controller already closed
+          // controller already closed (client disconnected)
         }
       }
-      const close = () => {
-        if (closed) return
-        closed = true
-        try { controller.close() } catch {}
-      }
 
-      emit({
-        type: 'meta',
-        month,
-        totalAmount,
-        cached: cachedAnswer !== null,
-      })
+      enqueue({ type: 'meta', month, totalAmount, cached: cachedAnswer !== null })
 
-      // Cache hit: emit the full answer as a single delta and we're done.
       if (cachedAnswer !== null) {
-        emit({ type: 'delta', text: cachedAnswer })
-        emit({ type: 'done' })
-        close()
-        return
-      }
+        // Cache hit — replay the full answer as a single delta.
+        enqueue({ type: 'delta', text: cachedAnswer })
+        enqueue({ type: 'done' })
+      } else if (prompt) {
+        // Cache miss — stream live from Claude CLI.
+        const claudeStart = Date.now()
+        console.log(`[ask-claude] Streaming Claude CLI for ${month}...`)
 
-      // Cache miss: spawn Claude and forward text deltas.
-      if (!prompt) {
-        emit({ type: 'error', message: 'Internal error: missing prompt' })
-        close()
-        return
-      }
-
-      const claudeStart = Date.now()
-      console.log(`[ask-claude] Streaming Claude CLI for ${month}...`)
-
-      child = spawnClaudeStream(prompt)
-
-      let stdoutBuf = ''
-      let stderrBuf = ''
-      let fullText = ''
-
-      child.stdout!.on('data', (chunk: Buffer) => {
-        stdoutBuf += chunk.toString()
-        const lines = stdoutBuf.split('\n')
-        stdoutBuf = lines.pop() ?? ''
-        for (const line of lines) {
-          if (!line.trim()) continue
-          let evt: unknown
-          try {
-            evt = JSON.parse(line)
-          } catch {
-            continue
-          }
-          const text = extractTextDelta(evt)
-          if (text !== null) {
+        let fullText = ''
+        try {
+          for await (const text of streamClaudeDeltas(prompt, ac.signal)) {
             fullText += text
-            emit({ type: 'delta', text })
+            enqueue({ type: 'delta', text })
           }
-        }
-      })
 
-      child.stderr!.on('data', (chunk: Buffer) => {
-        stderrBuf += chunk.toString()
-      })
-
-      child.on('error', (err) => {
-        console.error('[ask-claude] spawn error:', err)
-        emit({ type: 'error', message: err.message })
-        close()
-      })
-
-      child.on('close', async (code) => {
-        const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
-        if (code === 0 && fullText) {
-          try {
-            await prisma.monthlyInsight.upsert({
-              where: { month },
-              update: { answer: fullText, totalAmount },
-              create: { month, answer: fullText, totalAmount },
-            })
-          } catch (err) {
-            console.error('[ask-claude] cache upsert failed:', err)
+          if (fullText) {
+            try {
+              await prisma.monthlyInsight.upsert({
+                where: { month },
+                update: { answer: fullText, totalAmount },
+                create: { month, answer: fullText, totalAmount },
+              })
+            } catch (err) {
+              console.error('[ask-claude] cache upsert failed:', err)
+            }
           }
+
+          const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
           console.log(`[ask-claude] Streaming done for ${month} in ${elapsed}s`)
-          emit({ type: 'done' })
-        } else {
-          console.error(`[ask-claude] Claude exited ${code}: ${stderrBuf}`)
-          emit({
-            type: 'error',
-            message: `Claude exited ${code}${stderrBuf ? `: ${stderrBuf.slice(0, 200)}` : ''}`,
-          })
+          enqueue({ type: 'done' })
+        } catch (err) {
+          if (!ac.signal.aborted) {
+            console.error('[ask-claude] stream error:', err)
+            enqueue({
+              type: 'error',
+              message: err instanceof Error ? err.message : 'Unknown error',
+            })
+          }
         }
-        close()
-      })
+      }
+
+      try {
+        controller.close()
+      } catch {
+        // already closed by cancel
+      }
     },
     cancel() {
-      // Client aborted the stream — kill the CLI so we don't waste work.
-      if (child && !child.killed) {
-        child.kill()
-      }
+      ac.abort()
     },
   })
 
@@ -307,30 +222,19 @@ export async function GET(request: NextRequest) {
     }
 
     const refresh = searchParams.get('refresh') === 'true'
-    const wantsStream = searchParams.get('stream') === 'true'
 
-    console.log(`[ask-claude] Request for month=${month}${refresh ? ' (refresh)' : ''}${wantsStream ? ' (stream)' : ''}`)
+    console.log(`[ask-claude] Request for month=${month}${refresh ? ' (refresh)' : ''}`)
     const startTime = Date.now()
 
-    // Cache check (shared by streaming and non-streaming paths)
     if (!refresh) {
       const cached = await prisma.monthlyInsight.findUnique({ where: { month } })
       if (cached) {
         console.log(`[ask-claude] Cache hit for ${month}`)
-        const totalAmount = Number(cached.totalAmount)
-        if (wantsStream) {
-          return buildStreamResponse({
-            month: cached.month,
-            totalAmount,
-            cachedAnswer: cached.answer,
-            prompt: null,
-          })
-        }
-        return NextResponse.json({
-          answer: cached.answer,
+        return buildStreamResponse({
           month: cached.month,
-          totalAmount,
-          cached: true,
+          totalAmount: Number(cached.totalAmount),
+          cachedAnswer: cached.answer,
+          prompt: null,
         })
       }
     }
@@ -339,34 +243,15 @@ export async function GET(request: NextRequest) {
     if (!prep.ok) {
       return NextResponse.json({ error: prep.error }, { status: prep.status })
     }
-    const { totalAmount, prompt } = prep.prepared
 
     console.log(`[ask-claude] Prepared prompt in ${((Date.now() - startTime) / 1000).toFixed(2)}s`)
 
-    if (wantsStream) {
-      return buildStreamResponse({
-        month,
-        totalAmount,
-        cachedAnswer: null,
-        prompt,
-      })
-    }
-
-    console.log(`[ask-claude] Calling Claude CLI for ${month}...`)
-    const claudeStart = Date.now()
-    const stdout = await runClaude(prompt)
-    console.log(`[ask-claude] Claude responded in ${((Date.now() - claudeStart) / 1000).toFixed(2)}s`)
-
-    const result = JSON.parse(stdout)
-    console.log(`[ask-claude] Done for ${month} — total ${((Date.now() - startTime) / 1000).toFixed(2)}s`)
-
-    await prisma.monthlyInsight.upsert({
-      where: { month },
-      update: { answer: result.result, totalAmount },
-      create: { month, answer: result.result, totalAmount },
+    return buildStreamResponse({
+      month,
+      totalAmount: prep.prepared.totalAmount,
+      cachedAnswer: null,
+      prompt: prep.prepared.prompt,
     })
-
-    return NextResponse.json({ answer: result.result, month, totalAmount })
   } catch (error) {
     console.error('[ask-claude]', error)
     return NextResponse.json(
