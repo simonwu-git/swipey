@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
+import { useInsightsStream } from './useInsightsStream';
 
 const SECTIONS = [
   { key: 'summary', label: 'Summary', Icon: FileText },
@@ -54,39 +55,16 @@ function renderContent(text: string, isBulletSection: boolean) {
 
 export function InsightsSection({ month }: InsightsSectionProps) {
   const { isPrivacyMode } = usePrivacy();
-  const [insight, setInsight] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { insight, isLoading, error, refresh } = useInsightsStream(month);
   const [activeSection, setActiveSection] = useState<SectionKey>('summary');
-  const fetchInsights = useCallback(async (refresh = false) => {
-    if (!month) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const url = `/api/ask-claude?month=${month}${refresh ? '&refresh=true' : ''}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error ?? 'Failed to get insights');
-      } else {
-        setInsight(data.answer);
-      }
-    } catch {
-      setError('Failed to connect to Claude');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [month]);
 
-  // Reset state when month changes
-  useEffect(() => {
-    setInsight(null);
-    setError(null);
+  // Reset the active tab when the month switches. React's recommended pattern
+  // for resetting state tied to a prop — cheaper than a useEffect.
+  const [prevMonth, setPrevMonth] = useState(month);
+  if (prevMonth !== month) {
+    setPrevMonth(month);
     setActiveSection('summary');
-    if (month) {
-      fetchInsights();
-    }
-  }, [month, fetchInsights]);
+  }
 
   const parsed = useMemo(() => {
     if (!insight) return null;
@@ -94,22 +72,24 @@ export function InsightsSection({ month }: InsightsSectionProps) {
   }, [insight]);
 
   const renderBody = () => {
-    if (isLoading) {
-      return (
-        <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Analyzing spend...
-        </div>
-      );
-    }
-
     if (error) {
       return (
         <div className="flex-1 flex items-center justify-between">
           <span className="text-sm text-red-500">{error}</span>
-          <Button variant="ghost" size="sm" onClick={() => fetchInsights()}>
+          <Button variant="ghost" size="sm" onClick={refresh}>
             Retry
           </Button>
+        </div>
+      );
+    }
+
+    // Keep showing the loader until the first section has streamed in.
+    // This avoids the brief flash of raw text before [SUMMARY] arrives.
+    if (isLoading && !parsed) {
+      return (
+        <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Analyzing spend...
         </div>
       );
     }
@@ -124,7 +104,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               variant="ghost"
               size="sm"
               className="ml-auto h-6 w-6 p-0"
-              onClick={() => fetchInsights(true)}
+              onClick={refresh}
               title="Regenerate insights"
             >
               <RefreshCw className="h-3 w-3" />
