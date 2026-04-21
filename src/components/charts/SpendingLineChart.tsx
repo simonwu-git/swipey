@@ -111,7 +111,7 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
 
   // Simple chart config for single Total line
   const chartConfig: ChartConfig = {
-    total: { label: 'Total Spend', color: '#3b82f6' }
+    total: { label: 'Total Spend', color: 'var(--primary)' }
   };
 
   return (
@@ -124,8 +124,8 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
         >
           <defs>
             <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid

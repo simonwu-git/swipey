@@ -156,7 +156,7 @@ export function AccountsPage() {
   }
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading accounts...</div>
+    return <div className="text-muted-foreground">Loading accounts...</div>
   }
 
   return (
@@ -178,13 +178,13 @@ export function AccountsPage() {
       {isLoadingChart && (
         <Card>
           <CardContent className="p-6">
-            <div className="text-gray-500">Loading spending data...</div>
+            <div className="text-muted-foreground">Loading spending data...</div>
           </CardContent>
         </Card>
       )}
 
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium text-gray-900">
+        <h2 className="text-lg font-medium text-foreground">
           Your Accounts ({accounts.length})
         </h2>
         <Button onClick={handleAddAccount}>
@@ -194,7 +194,7 @@ export function AccountsPage() {
 
       {accounts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No accounts found</p>
+          <p className="text-muted-foreground mb-4">No accounts found</p>
           <Button onClick={handleAddAccount}>
             Create your first account
           </Button>
@@ -202,27 +202,26 @@ export function AccountsPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <ul className="divide-y">
+            <ul className="divide-y divide-border">
               {accounts.map((account) => (
-                <li key={account.id}>
+                <li
+                  key={account.id}
+                  onClick={() => router.push(`/accounts/${account.id}`)}
+                  className="group cursor-pointer hover:bg-muted transition-colors"
+                >
                   <div className="px-4 py-4 flex items-center justify-between">
-                    <div
-                      className="flex-1 cursor-pointer hover:bg-gray-50 -mx-4 px-4 py-2 rounded transition-colors"
-                      onClick={() => router.push(`/accounts/${account.id}`)}
-                    >
-                      <div className="flex items-center">
-                        <Avatar>
-                          <AvatarFallback>
-                            {account.bankType.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium">
-                            {account.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {account.bankType} • {account.tableKey}
-                          </div>
+                    <div className="flex-1 flex items-center">
+                      <Avatar>
+                        <AvatarFallback>
+                          {account.bankType.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                          {account.name}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {account.bankType} • {account.tableKey}
                         </div>
                       </div>
                     </div>
@@ -240,6 +239,7 @@ export function AccountsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="hover:!bg-destructive/10 hover:!text-destructive"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDeleteAccount(account.id)

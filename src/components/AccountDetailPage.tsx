@@ -338,7 +338,7 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
           ) : (
             <div className="divide-y divide-border">
               {importLogs.map((log) => (
-                <div key={log.id} className="px-6 py-4 hover:bg-accent transition-colors">
+                <div key={log.id} className="px-6 py-4 hover:bg-muted transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center mb-2">

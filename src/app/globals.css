@@ -6,8 +6,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -41,121 +42,117 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --shadow-sm: var(--sw-shadow-sm);
+  --shadow-md: var(--sw-shadow-md);
+  --shadow-lg: var(--sw-shadow-lg);
 }
 
 :root {
-  /* Cozy, Modern & Sleek Theme - Light Mode */
-  --radius: 0.75rem;
+  /* ─── Swipey Design System — Light ──────────────────────────────────── */
+  --radius: 0.5rem;
 
-  /* Warm, soft background with slight beige tone for coziness */
-  --background: oklch(0.98 0.005 85);
-  --foreground: oklch(0.25 0.015 270);
+  /* Brand */
+  --sw-primary: #6d28d9;
+  --sw-primary-hover: #5b21b6;
+  --sw-primary-light: #ede9fe;
+  --sw-accent: #f59e0b;
+  --sw-accent-light: #fef3c7;
 
-  /* Cards with subtle warmth and soft shadows */
-  --card: oklch(1 0.008 85);
-  --card-foreground: oklch(0.25 0.015 270);
+  /* shadcn surface tokens */
+  --background: #ffffff;
+  --foreground: #0f0a1e;
+  --card: #ffffff;
+  --card-foreground: #0f0a1e;
+  --popover: #ffffff;
+  --popover-foreground: #0f0a1e;
+  --primary: #6d28d9;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f2fb;
+  --secondary-foreground: #3b2067;
+  --muted: #f4f2fb;
+  --muted-foreground: #7c6fa0;
+  --accent: #f59e0b;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e1f5;
+  --input: #e5e1f5;
+  --ring: #6d28d9;
 
-  /* Popovers slightly elevated */
-  --popover: oklch(1 0.008 85);
-  --popover-foreground: oklch(0.25 0.015 270);
+  /* Page chrome */
+  --page-bg: #f8f6ff;
 
-  /* Modern indigo primary for sleekness */
-  --primary: oklch(0.52 0.18 265);
-  --primary-foreground: oklch(0.99 0.005 265);
+  /* Charts — violet-led palette */
+  --chart-1: #6d28d9;
+  --chart-2: #f59e0b;
+  --chart-3: #0ea5e9;
+  --chart-4: #10b981;
+  --chart-5: #db2777;
 
-  /* Soft secondary with warmth */
-  --secondary: oklch(0.95 0.012 85);
-  --secondary-foreground: oklch(0.35 0.02 270);
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f0a1e;
+  --sidebar-primary: #6d28d9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ede9fe;
+  --sidebar-accent-foreground: #5b21b6;
+  --sidebar-border: #e5e1f5;
+  --sidebar-ring: #6d28d9;
 
-  /* Muted with gentle warmth */
-  --muted: oklch(0.96 0.008 85);
-  --muted-foreground: oklch(0.5 0.01 270);
-
-  /* Accent with subtle violet tone */
-  --accent: oklch(0.95 0.02 300);
-  --accent-foreground: oklch(0.35 0.08 300);
-
-  /* Warm destructive red */
-  --destructive: oklch(0.55 0.22 25);
-
-  /* Subtle, refined borders */
-  --border: oklch(0.92 0.008 85);
-  --input: oklch(0.92 0.008 85);
-  --ring: oklch(0.52 0.18 265);
-
-  /* Beautiful chart colors - vibrant yet harmonious */
-  --chart-1: oklch(0.55 0.20 265); /* Deep indigo */
-  --chart-2: oklch(0.65 0.18 330); /* Warm pink */
-  --chart-3: oklch(0.60 0.15 150); /* Teal */
-  --chart-4: oklch(0.70 0.16 85);  /* Golden */
-  --chart-5: oklch(0.58 0.19 25);  /* Coral */
-
-  /* Cozy sidebar */
-  --sidebar: oklch(0.985 0.008 85);
-  --sidebar-foreground: oklch(0.30 0.015 270);
-  --sidebar-primary: oklch(0.52 0.18 265);
-  --sidebar-primary-foreground: oklch(0.99 0.005 265);
-  --sidebar-accent: oklch(0.95 0.012 85);
-  --sidebar-accent-foreground: oklch(0.35 0.02 270);
-  --sidebar-border: oklch(0.92 0.008 85);
-  --sidebar-ring: oklch(0.52 0.18 265);
+  /* Purple-tinted shadows */
+  --sw-shadow-sm: 0 1px 3px rgba(109, 40, 217, 0.07), 0 1px 2px rgba(109, 40, 217, 0.05);
+  --sw-shadow-md: 0 4px 16px rgba(109, 40, 217, 0.10), 0 2px 6px rgba(109, 40, 217, 0.06);
+  --sw-shadow-lg: 0 12px 40px rgba(109, 40, 217, 0.14), 0 4px 12px rgba(109, 40, 217, 0.08);
+  --sw-shadow-glow: 0 0 0 3px rgba(109, 40, 217, 0.18);
 }
 
 .dark {
-  /* Cozy, Modern & Sleek Theme - Dark Mode */
+  /* ─── Swipey Design System — Dark ───────────────────────────────────── */
+  --sw-primary: #8b5cf6;
+  --sw-primary-hover: #7c3aed;
+  --sw-primary-light: #1e1838;
 
-  /* Deep, rich dark background with subtle warmth */
-  --background: oklch(0.15 0.01 270);
-  --foreground: oklch(0.95 0.008 85);
+  --background: #0d0b18;
+  --foreground: #f0eeff;
+  --card: #16122a;
+  --card-foreground: #f0eeff;
+  --popover: #1e1838;
+  --popover-foreground: #f0eeff;
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --secondary: #1e1838;
+  --secondary-foreground: #c4b5fd;
+  --muted: #1e1838;
+  --muted-foreground: #8878b0;
+  --accent: #f59e0b;
+  --accent-foreground: #0d0b18;
+  --destructive: #f87171;
+  --destructive-foreground: #0d0b18;
+  --border: #2d2450;
+  --input: #2d2450;
+  --ring: #8b5cf6;
 
-  /* Elevated cards with gentle contrast */
-  --card: oklch(0.20 0.015 270);
-  --card-foreground: oklch(0.95 0.008 85);
+  --page-bg: #0a0814;
 
-  /* Popovers with depth */
-  --popover: oklch(0.18 0.015 270);
-  --popover-foreground: oklch(0.95 0.008 85);
+  --chart-1: #8b5cf6;
+  --chart-2: #fbbf24;
+  --chart-3: #38bdf8;
+  --chart-4: #34d399;
+  --chart-5: #f472b6;
 
-  /* Vibrant but sophisticated primary */
-  --primary: oklch(0.70 0.20 265);
-  --primary-foreground: oklch(0.15 0.01 270);
+  --sidebar: #0d0b18;
+  --sidebar-foreground: #f0eeff;
+  --sidebar-primary: #8b5cf6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e1838;
+  --sidebar-accent-foreground: #c4b5fd;
+  --sidebar-border: #2d2450;
+  --sidebar-ring: #8b5cf6;
 
-  /* Soft secondary surfaces */
-  --secondary: oklch(0.25 0.02 270);
-  --secondary-foreground: oklch(0.90 0.01 85);
-
-  /* Muted areas with warmth */
-  --muted: oklch(0.25 0.02 270);
-  --muted-foreground: oklch(0.65 0.01 270);
-
-  /* Subtle accent with violet glow */
-  --accent: oklch(0.28 0.04 300);
-  --accent-foreground: oklch(0.85 0.12 300);
-
-  /* Vibrant destructive */
-  --destructive: oklch(0.65 0.24 25);
-
-  /* Refined borders with subtle visibility */
-  --border: oklch(0.30 0.02 270);
-  --input: oklch(0.28 0.02 270);
-  --ring: oklch(0.70 0.20 265);
-
-  /* Vibrant chart colors for dark mode */
-  --chart-1: oklch(0.65 0.22 265); /* Bright indigo */
-  --chart-2: oklch(0.70 0.20 330); /* Vibrant pink */
-  --chart-3: oklch(0.68 0.18 150); /* Bright teal */
-  --chart-4: oklch(0.75 0.18 85);  /* Luminous golden */
-  --chart-5: oklch(0.68 0.22 25);  /* Warm coral */
-
-  /* Sleek sidebar */
-  --sidebar: oklch(0.18 0.015 270);
-  --sidebar-foreground: oklch(0.90 0.008 85);
-  --sidebar-primary: oklch(0.70 0.20 265);
-  --sidebar-primary-foreground: oklch(0.15 0.01 270);
-  --sidebar-accent: oklch(0.25 0.02 270);
-  --sidebar-accent-foreground: oklch(0.90 0.01 85);
-  --sidebar-border: oklch(0.30 0.02 270);
-  --sidebar-ring: oklch(0.70 0.20 265);
+  --sw-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(139, 92, 246, 0.08);
+  --sw-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(139, 92, 246, 0.10);
+  --sw-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(139, 92, 246, 0.14);
+  --sw-shadow-glow: 0 0 0 3px rgba(139, 92, 246, 0.30);
 }
 
 @layer base {
@@ -164,32 +161,33 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "cv11", "ss01";
-    font-variation-settings: "opsz" auto;
+    background: var(--page-bg);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s, color 0.3s;
   }
 
-  /* Smooth transitions for cozy feel */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
   * {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Enhanced cards with subtle elevation */
-  [class*="card"] {
-    @apply shadow-sm;
-  }
-
-  /* Refined focus states */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-ring/50;
+    @apply outline-2 outline-offset-2;
+    outline-color: var(--ring);
   }
 
-  /* Smooth hover transitions */
   button, a, [role="button"] {
     @apply transition-colors duration-200;
   }
 
-  /* Enhanced scrollbar for modern feel */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

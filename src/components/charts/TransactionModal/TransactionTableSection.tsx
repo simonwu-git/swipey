@@ -95,7 +95,7 @@ export function TransactionTableSection({
 
   if (transactions.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500">
+      <div className="p-8 text-center text-muted-foreground">
         No transactions found for this period
       </div>
     );
@@ -128,7 +128,7 @@ export function TransactionTableSection({
               {transaction.description}
             </TableCell>
             <TableCell>
-              {transaction.category || <span className="text-gray-400">—</span>}
+              {transaction.category || <span className="text-muted-foreground">—</span>}
             </TableCell>
             <TableCell className="text-right font-medium">
               {formatCurrency(transaction.amount)}
