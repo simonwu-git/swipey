@@ -104,6 +104,9 @@
   --sw-shadow-md: 0 4px 16px rgba(109, 40, 217, 0.10), 0 2px 6px rgba(109, 40, 217, 0.06);
   --sw-shadow-lg: 0 12px 40px rgba(109, 40, 217, 0.14), 0 4px 12px rgba(109, 40, 217, 0.08);
   --sw-shadow-glow: 0 0 0 3px rgba(109, 40, 217, 0.18);
+
+  /* Top-down aura — soft radial tint for AI surfaces */
+  --glow-aura: radial-gradient(120% 80% at 50% 0%, rgba(167, 139, 250, 0.28), transparent 55%);
 }
 
 .dark {
@@ -153,6 +156,8 @@
   --sw-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(139, 92, 246, 0.10);
   --sw-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(139, 92, 246, 0.14);
   --sw-shadow-glow: 0 0 0 3px rgba(139, 92, 246, 0.30);
+
+  --glow-aura: radial-gradient(120% 80% at 50% 0%, rgba(139, 92, 246, 0.35), transparent 55%);
 }
 
 @layer base {
@@ -204,4 +209,42 @@
     border: 2px solid transparent;
     background-clip: padding-box;
   }
+}
+
+/* ─── AI glow moments ──────────────────────────────────────────────── */
+@keyframes sparkle-float {
+  0%, 100% { transform: translateY(0) scale(1);    opacity: 0.7; }
+  50%      { transform: translateY(-2px) scale(1.15); opacity: 1; }
+}
+
+/* Soft top-down aura wash — a subtle radial tint that signals AI-ness
+   without any border glow. Content is lifted into its own stacking
+   context so it paints above the aura layer. */
+.ai-glow-surface {
+  position: relative;
+}
+.ai-glow-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glow-aura);
+  pointer-events: none;
+  opacity: 0.25;
+  z-index: 0;
+}
+.dark .ai-glow-surface::before { opacity: 0.3; }
+.ai-glow-surface > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ai-sparkle {
+  color: var(--sw-primary);
+  animation: sparkle-float 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-sparkle { animation: none; }
 }

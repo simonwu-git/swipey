@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Sparkles,
   Loader2,
   RefreshCw,
   FileText,
@@ -15,6 +14,19 @@ import {
 import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
 import { useInsightsStream } from './useInsightsStream';
+
+function AnimatedStar({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M12 2l1.8 5.5L19 9l-5.2 1.5L12 16l-1.8-5.5L5 9l5.2-1.5z" />
+    </svg>
+  );
+}
 
 const SECTIONS = [
   { key: 'summary', label: 'Summary', Icon: FileText },
@@ -98,7 +110,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
       return (
         <>
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-4 w-4 text-purple-500" />
+            <AnimatedStar className="ai-sparkle h-4 w-4" />
             <span className="text-sm font-medium">Insights</span>
             <Button
               variant="ghost"
@@ -146,14 +158,14 @@ export function InsightsSection({ month }: InsightsSectionProps) {
 
     return (
       <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
-        <Sparkles className="h-4 w-4 text-purple-500" />
+        <AnimatedStar className="ai-sparkle h-4 w-4" />
         Insights will appear here
       </div>
     );
   };
 
   return (
-    <Card className="h-full">
+    <Card className="ai-glow-surface h-full">
       <CardContent className="p-3 h-full flex flex-col">
         {renderBody()}
       </CardContent>
