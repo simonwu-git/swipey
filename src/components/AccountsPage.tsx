@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { BankLogo } from '@/components/BankLogo'
 import { SpendingLineChart } from '@/components/charts/SpendingLineChart'
 import { TransactionModal } from '@/components/charts/TransactionModal'
+import { formatAccountLabel } from '@/lib/accountDisplay'
 
 interface Account {
   id: string
@@ -217,7 +218,7 @@ export function AccountsPage() {
                           {account.name}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {account.bankType} • {account.tableKey}
+                          {formatAccountLabel(account.bankType, account.tableKey)}
                         </div>
                       </div>
                     </div>
