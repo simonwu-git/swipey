@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AccountForm } from './AccountForm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { BankLogo } from '@/components/BankLogo'
 import { SpendingLineChart } from '@/components/charts/SpendingLineChart'
 import { TransactionModal } from '@/components/charts/TransactionModal'
 
@@ -211,11 +211,7 @@ export function AccountsPage() {
                 >
                   <div className="px-4 py-4 flex items-center justify-between">
                     <div className="flex-1 flex items-center">
-                      <Avatar>
-                        <AvatarFallback>
-                          {account.bankType.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <BankLogo bankType={account.bankType} size={40} />
                       <div className="ml-4">
                         <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                           {account.name}

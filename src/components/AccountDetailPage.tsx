@@ -6,6 +6,7 @@ import { Account, ImportLog, ImportResult } from '@/lib/types';
 import { ArrowLeft, FileText, Calendar, Clock, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { CSVDropzone } from './CSVDropzone';
 import { TransactionPreview } from './TransactionPreview';
+import { BankLogo } from './BankLogo';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -227,9 +228,7 @@ export default function AccountDetailPage({ accountId }: AccountDetailPageProps)
 
           <div className="bg-card rounded-lg shadow-sm border border-border p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xl">
-                {account.bankType.charAt(0).toUpperCase()}
-              </div>
+              <BankLogo bankType={account.bankType} size={56} />
               <div className="ml-4">
                 <h1 className="text-2xl font-bold text-foreground">{account.name}</h1>
                 <p className="text-muted-foreground">
