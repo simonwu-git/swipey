@@ -35,6 +35,18 @@ function CustomTooltipContent({ active, payload, label, accounts, formatCurrency
   }
 
   const dataPoint = payload[0]?.payload;
+
+  if (dataPoint?.isNoData) {
+    return (
+      <div className={cn(
+        "border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl"
+      )}>
+        <div className="font-medium mb-1">{label}</div>
+        <div className="text-muted-foreground">No data</div>
+      </div>
+    );
+  }
+
   const total = dataPoint?.Total || 0;
 
   return (
@@ -71,32 +83,44 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
   const { formatCurrency } = usePrivacy();
   const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
 
-  // Filter data based on selected time range
-  const filteredData = useMemo(() => {
+  const chartData = useMemo(() => {
+    if (data.length === 0) return [];
+
+    const dataByMonth = new Map(data.map(d => [d.month, d]));
+    const latestDataMonth = data[data.length - 1].month;
+
+    let monthsToShow: string[];
     if (timeRange === 'ALL') {
-      return data;
+      monthsToShow = data.map(d => d.month);
+    } else {
+      const monthsBack = timeRange === '3M' ? 3 : timeRange === '6M' ? 6 : 12;
+      const now = new Date();
+      monthsToShow = [];
+      for (let i = monthsBack - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        monthsToShow.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
     }
 
-    const now = new Date();
-    const monthsBack = timeRange === '3M' ? 3 : timeRange === '6M' ? 6 : 12;
-    const cutoffDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
-    const cutoffMonth = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}`;
-
-    return data.filter(item => item.month >= cutoffMonth);
-  }, [data, timeRange]);
-
-  // Add Total to chart data
-  const chartData = useMemo(() => {
-    return filteredData.map(item => ({
-      ...item,
-      Total: accounts.reduce((sum, acc) => sum + (Number(item[acc]) || 0), 0)
-    }));
-  }, [filteredData, accounts]);
+    return monthsToShow.map(month => {
+      const existing = dataByMonth.get(month);
+      if (existing) {
+        return {
+          ...existing,
+          Total: accounts.reduce((sum, acc) => sum + (Number(existing[acc]) || 0), 0),
+          isNoData: false,
+        };
+      }
+      const isNoData = month > latestDataMonth;
+      const filled: Record<string, any> = { month, Total: 0, isNoData };
+      accounts.forEach(acc => { filled[acc] = 0; });
+      return filled;
+    });
+  }, [data, accounts, timeRange]);
 
   // Handle click on chart - receives the data point directly
   const handleClick = (clickData: any) => {
-    // When clicking on a data point, clickData will have the month property
-    if (clickData && clickData.month && onMonthClick) {
+    if (clickData && clickData.month && !clickData.isNoData && onMonthClick) {
       onMonthClick(clickData.month);
     }
   };
@@ -173,14 +197,54 @@ export function SpendingLineChart({ data, accounts, title = 'Monthly Spending', 
             dataKey="Total"
             stroke="var(--color-total)"
             strokeWidth={1.5}
-            dot={{ r: 2.5, fill: 'var(--color-total)', strokeWidth: 0 }}
-            activeDot={{
-              r: 5,
-              fill: 'var(--color-total)',
-              stroke: 'var(--background)',
-              strokeWidth: 2,
-              cursor: 'pointer',
-              onClick: (_e: any, payload: any) => handleClick(payload.payload)
+            // Months past the latest synced data render a faded hollow ring so
+            // they're visually distinct from real $0-spend months sitting at y=0.
+            dot={(props: any) => {
+              const { cx, cy, payload, index } = props;
+              if (payload?.isNoData) {
+                return (
+                  <circle
+                    key={`dot-${index}`}
+                    cx={cx}
+                    cy={cy}
+                    r={2.5}
+                    fill="var(--background)"
+                    stroke="var(--muted-foreground)"
+                    strokeWidth={1}
+                    opacity={0.5}
+                  />
+                );
+              }
+              return (
+                <circle
+                  key={`dot-${index}`}
+                  cx={cx}
+                  cy={cy}
+                  r={2.5}
+                  fill="var(--color-total)"
+                />
+              );
+            }}
+            // Suppress the hover dot for no-data months — otherwise clicking
+            // would open an empty transaction modal.
+            activeDot={(props: any) => {
+              const { cx, cy, payload, index } = props;
+              if (payload?.isNoData) {
+                return <g key={`active-${index}`} />;
+              }
+              return (
+                <circle
+                  key={`active-${index}`}
+                  cx={cx}
+                  cy={cy}
+                  r={5}
+                  fill="var(--color-total)"
+                  stroke="var(--background)"
+                  strokeWidth={2}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleClick(payload)}
+                />
+              );
             }}
           />
         </ComposedChart>
