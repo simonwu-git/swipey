@@ -10,10 +10,12 @@ import {
   TrendingUp,
   ArrowLeftRight,
   Lightbulb,
+  Layers,
 } from 'lucide-react';
 import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
 import { useInsightsStream } from './useInsightsStream';
+import { useGroupings } from './useGroupings';
 
 function AnimatedStar({ className }: { className?: string }) {
   return (
@@ -36,6 +38,7 @@ const SECTIONS = [
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]['key'];
+type ActiveSection = SectionKey | 'groups';
 
 const BULLET_SECTIONS: SectionKey[] = ['patterns', 'suggestions'];
 
@@ -47,7 +50,6 @@ function renderContent(text: string, isBulletSection: boolean) {
   if (!text) return <span className="text-muted-foreground italic">No data</span>;
 
   if (isBulletSection) {
-    // Split on newlines, filter empty, strip leading bullet chars
     const items = text
       .split('\n')
       .map((line) => line.replace(/^[\s•\-*]+/, '').trim())
@@ -68,10 +70,8 @@ function renderContent(text: string, isBulletSection: boolean) {
 export function InsightsSection({ month }: InsightsSectionProps) {
   const { isPrivacyMode } = usePrivacy();
   const { insight, isLoading, error, refresh } = useInsightsStream(month);
-  const [activeSection, setActiveSection] = useState<SectionKey>('summary');
+  const [activeSection, setActiveSection] = useState<ActiveSection>('summary');
 
-  // Reset the active tab when the month switches. React's recommended pattern
-  // for resetting state tied to a prop — cheaper than a useEffect.
   const [prevMonth, setPrevMonth] = useState(month);
   if (prevMonth !== month) {
     setPrevMonth(month);
@@ -82,6 +82,12 @@ export function InsightsSection({ month }: InsightsSectionProps) {
     if (!insight) return null;
     return parseInsights(insight);
   }, [insight]);
+
+  const {
+    groupings,
+    isLoading: groupingsLoading,
+    error: groupingsError,
+  } = useGroupings(month, activeSection === 'groups');
 
   const renderBody = () => {
     if (error) {
@@ -95,8 +101,6 @@ export function InsightsSection({ month }: InsightsSectionProps) {
       );
     }
 
-    // Keep showing the loader until the first section has streamed in.
-    // This avoids the brief flash of raw text before [SUMMARY] arrives.
     if (isLoading && !parsed) {
       return (
         <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
@@ -138,11 +142,53 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                       {label}
                     </Button>
                   ))}
+                  <Button
+                    variant={activeSection === 'groups' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                    onClick={() => setActiveSection('groups')}
+                  >
+                    <Layers className="h-3 w-3" />
+                    Groups
+                  </Button>
                 </div>
                 <div className="text-sm">
-                  {renderContent(
-                    parsed[activeSection],
-                    BULLET_SECTIONS.includes(activeSection)
+                  {activeSection === 'groups' ? (
+                    <div className="space-y-2">
+                      {groupingsLoading && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Analyzing groupings...
+                        </div>
+                      )}
+                      {groupingsError && (
+                        <span className="text-destructive">{groupingsError}</span>
+                      )}
+                      {!groupingsLoading && !groupingsError && groupings.length === 0 && (
+                        <p className="text-muted-foreground italic">
+                          No clear groupings for this month.
+                        </p>
+                      )}
+                      {groupings.map((g) => (
+                        <div
+                          key={g.id}
+                          className="rounded-lg border border-border bg-card p-3"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-display font-medium">{g.name}</span>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {g.transactionIds.length} tx · ${g.total.toFixed(2)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{g.why}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    renderContent(
+                      parsed[activeSection as SectionKey],
+                      BULLET_SECTIONS.includes(activeSection as SectionKey),
+                    )
                   )}
                 </div>
               </>
