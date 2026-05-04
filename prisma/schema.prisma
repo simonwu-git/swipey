@@ -40,7 +40,8 @@ model Transaction {
 model MonthlyInsight {
   id          String   @id @default(cuid())
   month       String   @unique       // "YYYY-MM" format, one insight per month
-  answer      String                 // PostgreSQL text type
+  answer      String?                // cached insights answer from /api/ask-claude (may be null if only groupings have been computed)
+  groupings   String?                // cached AI-detected groupings for /api/ask-claude/groupings (JSON array of {name, why, transactionIds})
   totalAmount Decimal  @map("total_amount")
   createdAt   DateTime @default(now()) @map("created_at")
 

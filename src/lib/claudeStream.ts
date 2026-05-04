@@ -98,3 +98,17 @@ export async function* streamClaudeDeltas(
     )
   }
 }
+
+// Run the Claude CLI once, buffering all deltas into a single string. Use this
+// when you don't need streaming — e.g. structured-JSON endpoints where the
+// client renders the full result at once. Throws on non-zero exit.
+export async function runClaudeOnce(
+  prompt: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  let out = ''
+  for await (const text of streamClaudeDeltas(prompt, signal)) {
+    out += text
+  }
+  return out
+}

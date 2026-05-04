@@ -228,7 +228,9 @@ export async function GET(request: NextRequest) {
 
     if (!refresh) {
       const cached = await prisma.monthlyInsight.findUnique({ where: { month } })
-      if (cached) {
+      // Row may exist with only `groupings` populated (from /api/ask-claude/groupings).
+      // Treat it as a cache miss for insights and fall through to the live model call.
+      if (cached?.answer != null) {
         console.log(`[ask-claude] Cache hit for ${month}`)
         return buildStreamResponse({
           month: cached.month,
