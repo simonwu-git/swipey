@@ -43,3 +43,15 @@ The visual design lives in `src/app/globals.css` as CSS variables. **Always go t
 ### When adding new shadcn primitives
 
 shadcn defaults sometimes use `bg-accent` / `focus:bg-accent` for hover/focus states (e.g. dropdown items, dialog close buttons). Swap these to `bg-muted` / `focus:bg-muted` on install — see `ui/select.tsx`, `ui/dialog.tsx`, `ui/button.tsx` for the pattern.
+
+## Workflow gotchas
+
+### Always restart `next dev` after a Prisma schema change
+
+`next dev` caches the generated `@prisma/client` in its Node module graph. Running `npx prisma migrate dev` (or `prisma generate`) regenerates the client on disk, but the running server keeps using the old in-memory copy. Symptoms when this is missed:
+
+- Writes to a newly added column silently no-op (Prisma drops the unknown field).
+- Reads of a new column come back `undefined`.
+- Cache-write paths appear to succeed (no error thrown) but the row never updates, so every request looks like a cache miss.
+
+Fix: stop and restart `next dev` after every migration. Hot reload is not enough.
