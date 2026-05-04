@@ -87,6 +87,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
     groupings,
     isLoading: groupingsLoading,
     error: groupingsError,
+    refresh: refreshGroupings,
   } = useGroupings(month, activeSection === 'groups');
 
   const renderBody = () => {
@@ -120,8 +121,8 @@ export function InsightsSection({ month }: InsightsSectionProps) {
               variant="ghost"
               size="sm"
               className="ml-auto h-6 w-6 p-0"
-              onClick={refresh}
-              title="Regenerate insights"
+              onClick={() => { refresh(); refreshGroupings(); }}
+              title="Regenerate insights and groups"
             >
               <RefreshCw className="h-3 w-3" />
             </Button>
@@ -155,7 +156,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                 <div className="text-sm">
                   {activeSection === 'groups' ? (
                     <div className="space-y-2">
-                      {groupingsLoading && (
+                      {groupingsLoading && groupings.length === 0 && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Analyzing groupings...
@@ -183,6 +184,12 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                           <p className="text-xs text-muted-foreground">{g.why}</p>
                         </div>
                       ))}
+                      {groupingsLoading && groupings.length > 0 && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Finding more...
+                        </div>
+                      )}
                     </div>
                   ) : (
                     renderContent(

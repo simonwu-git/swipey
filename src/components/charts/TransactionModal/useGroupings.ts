@@ -1,7 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { readNdjsonLines } from '@/lib/ndjson';
 import type { Grouping } from './types';
+
+type GroupingStreamEvent =
+  | { type: 'meta'; month: string; cached: boolean }
+  | { type: 'grouping'; data: Grouping }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
+
+function isGroupingStreamEvent(val: unknown): val is GroupingStreamEvent {
+  if (typeof val !== 'object' || val === null) return false;
+  const t = (val as { type?: unknown }).type;
+  return t === 'meta' || t === 'grouping' || t === 'done' || t === 'error';
+}
 
 export interface UseGroupingsResult {
   groupings: Grouping[];
@@ -14,6 +27,7 @@ export function useGroupings(month: string | null, enabled: boolean): UseGroupin
   const [groupings, setGroupings] = useState<Grouping[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   // Cancels in-flight fetches in two cases: (1) month changes while a request is running,
   // so the stale response can't overwrite newer state; (2) component unmounts mid-fetch,
   // so setState is never called on an unmounted component.
@@ -31,7 +45,7 @@ export function useGroupings(month: string | null, enabled: boolean): UseGroupin
 
     setIsLoading(true);
     setError(null);
-    if (forceRefresh) setGroupings([]);
+    setGroupings([]);
 
     try {
       const url = `/api/ask-claude/groupings?month=${month}${forceRefresh ? '&refresh=true' : ''}`;
@@ -46,9 +60,19 @@ export function useGroupings(month: string | null, enabled: boolean): UseGroupin
         return;
       }
 
-      const data = await response.json();
-      if (!controller.signal.aborted) {
-        setGroupings(data.groupings ?? []);
+      if (!response.body) {
+        setError('Streaming not supported');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      for await (const raw of readNdjsonLines(reader)) {
+        if (!isGroupingStreamEvent(raw)) continue;
+        if (raw.type === 'grouping') {
+          setGroupings((prev) => [...prev, raw.data]);
+        } else if (raw.type === 'error') {
+          setError(raw.message);
+        }
       }
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;

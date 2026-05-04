@@ -2,35 +2,41 @@
 //
 // GET /api/ask-claude/groupings?month=YYYY-MM[&refresh=true]
 //
-// Calls Claude (via runClaudeOnce, buffering the stream) to detect up to 3
-// interesting groupings of the month's transactions and returns them as
-// structured JSON. Cached by month on `MonthlyInsight.groupings` so re-opening
-// the Groups tab doesn't pay the model cost again.
+// Streams Claude's groupings incrementally as NDJSON so the first card
+// appears within ~5–10s instead of waiting for the full ~30s response.
+// Cached by month on `MonthlyInsight.groupings`; cache hits replay instantly
+// through the same event protocol so the client code stays uniform.
 //
-// All pure logic — schemas, prompt format, parsing, enrichment — lives in
-// ./lib.ts. This file owns HTTP plumbing, the Prisma transaction load, the
-// Claude invocation, and cache I/O.
+// Event protocol (one JSON object per line):
+//   {type:"meta", month, cached:boolean}
+//   {type:"grouping", data: Grouping}
+//   {type:"done"}
+//   {type:"error", message}
 //
-// Response: 200 { groupings: Grouping[], cached: boolean }
-//           400 bad month
-//           404 no transactions for month
-//           502 model returned unparseable output
-//           500 unexpected
+// Pre-stream errors (bad month, no transactions) return plain JSON:
+//   400 bad month / 404 no transactions
 
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { runClaudeOnce } from '@/lib/claudeStream'
+import { streamClaudeDeltas } from '@/lib/claudeStream'
 import {
   CachedGroupingsArraySchema,
+  MAX_GROUPINGS,
   buildGroupingsPrompt,
-  enrichForResponse,
-  modelToCached,
-  parseModelOutput,
+  enrichOne,
+  parseGroupingStream,
+  type CachedGrouping,
   type PromptTransaction,
 } from './lib'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
+
+const NDJSON_HEADERS = {
+  'Content-Type': 'application/x-ndjson; charset=utf-8',
+  'Cache-Control': 'no-store, no-transform',
+  'X-Accel-Buffering': 'no',
+}
 
 async function loadMonthTransactions(month: string): Promise<PromptTransaction[]> {
   const [year, monthNum] = month.split('-').map(Number)
@@ -58,101 +64,131 @@ async function loadMonthTransactions(month: string): Promise<PromptTransaction[]
   }))
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const sp = request.nextUrl.searchParams
-    const month = sp.get('month')
+function buildStream(
+  fn: (enqueue: (event: unknown) => void, ac: AbortController) => Promise<void>,
+): Response {
+  const encoder = new TextEncoder()
+  const ac = new AbortController()
 
-    if (!month) {
-      return NextResponse.json(
-        { error: 'month query parameter is required (YYYY-MM)' },
-        { status: 400 },
-      )
-    }
-    if (!MONTH_RE.test(month)) {
-      return NextResponse.json(
-        { error: 'month must be in YYYY-MM format' },
-        { status: 400 },
-      )
-    }
-
-    const refresh = sp.get('refresh') === 'true'
-    console.log(`[groupings] Request for month=${month}${refresh ? ' (refresh)' : ''}`)
-
-    const transactions = await loadMonthTransactions(month)
-    if (transactions.length === 0) {
-      return NextResponse.json(
-        { error: `No transactions found for ${month}` },
-        { status: 404 },
-      )
-    }
-
-    const { prompt, orderedIds, totalAmount, amountsById } = buildGroupingsPrompt(month, transactions)
-    const knownIds = new Set(orderedIds)
-
-    // Cache hit path: cache stores resolved transaction IDs (not indices), so
-    // it stays valid even if the underlying transaction order changes.
-    if (!refresh) {
-      const cached = await prisma.monthlyInsight.findUnique({ where: { month } })
-      if (cached?.groupings) {
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const enqueue = (event: unknown) => {
         try {
-          const parsed = CachedGroupingsArraySchema.parse(JSON.parse(cached.groupings))
-          const { enriched } = enrichForResponse(parsed, knownIds, amountsById)
-          console.log(`[groupings] Cache hit for ${month} (${enriched.length} groups)`)
-          return NextResponse.json({ groupings: enriched, cached: true })
-        } catch (err) {
-          console.warn(`[groupings] Cached payload for ${month} failed validation, regenerating:`, err)
-          // fall through to live path
+          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+        } catch {
+          // controller already closed (client disconnected)
         }
       }
-    }
+      try {
+        await fn(enqueue, ac)
+      } finally {
+        try { controller.close() } catch { /* already closed */ }
+      }
+    },
+    cancel() {
+      ac.abort()
+    },
+  })
 
-    // Live path
-    const claudeStart = Date.now()
-    console.log(`[groupings] Calling Claude for ${month}...`)
-    const fullText = await runClaudeOnce(prompt)
-    const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
-    console.log(`[groupings] Claude returned ${fullText.length} chars in ${elapsed}s`)
+  return new Response(stream, { headers: NDJSON_HEADERS })
+}
 
-    let modelOutput
-    try {
-      modelOutput = parseModelOutput(fullText)
-    } catch (err) {
-      console.error(`[groupings] Failed to parse model output for ${month}:`, err)
-      const message = err instanceof Error ? err.message : 'Unknown parse error'
-      return NextResponse.json(
-        {
-          error: 'Model returned unparseable groupings',
-          details: message,
-          ...(process.env.NODE_ENV !== 'production' ? { raw: fullText } : {}),
-        },
-        { status: 502 },
-      )
-    }
+export async function GET(request: NextRequest) {
+  const sp = request.nextUrl.searchParams
+  const month = sp.get('month')
 
-    const cachedShape = modelToCached(modelOutput, orderedIds)
-    const { clean, enriched } = enrichForResponse(cachedShape, knownIds, amountsById)
-    console.log(`[groupings] ${modelOutput.length} model groupings → ${enriched.length} after sanitize`)
-
-    try {
-      await prisma.monthlyInsight.upsert({
-        where: { month },
-        update: { groupings: JSON.stringify(clean), totalAmount },
-        create: { month, groupings: JSON.stringify(clean), totalAmount },
-      })
-    } catch (err) {
-      console.error('[groupings] cache upsert failed:', err)
-    }
-
-    return NextResponse.json({ groupings: enriched, cached: false })
-  } catch (error) {
-    console.error('[groupings]', error)
+  if (!month) {
     return NextResponse.json(
-      {
-        error: 'Failed to compute groupings',
-        details: error instanceof Error ? error.message : 'Unknown',
-      },
-      { status: 500 },
+      { error: 'month query parameter is required (YYYY-MM)' },
+      { status: 400 },
     )
   }
+  if (!MONTH_RE.test(month)) {
+    return NextResponse.json(
+      { error: 'month must be in YYYY-MM format' },
+      { status: 400 },
+    )
+  }
+
+  const refresh = sp.get('refresh') === 'true'
+  console.log(`[groupings] Request for month=${month}${refresh ? ' (refresh)' : ''}`)
+
+  const transactions = await loadMonthTransactions(month)
+  if (transactions.length === 0) {
+    return NextResponse.json(
+      { error: `No transactions found for ${month}` },
+      { status: 404 },
+    )
+  }
+
+  const { prompt, orderedIds, totalAmount, amountsById } = buildGroupingsPrompt(month, transactions)
+  const knownIds = new Set(orderedIds)
+
+  // Cache hit path — replay stored groupings through the same event protocol.
+  if (!refresh) {
+    const cached = await prisma.monthlyInsight.findUnique({ where: { month } })
+    if (cached?.groupings) {
+      try {
+        const parsed = CachedGroupingsArraySchema.parse(JSON.parse(cached.groupings))
+        console.log(`[groupings] Cache hit for ${month} (${parsed.length} groups)`)
+        return buildStream(async (enqueue) => {
+          enqueue({ type: 'meta', month, cached: true })
+          let emitted = 0
+          for (const g of parsed) {
+            if (emitted >= MAX_GROUPINGS) break
+            const enriched = enrichOne(g, knownIds, amountsById)
+            if (!enriched) continue
+            enqueue({ type: 'grouping', data: enriched })
+            emitted++
+          }
+          enqueue({ type: 'done' })
+        })
+      } catch (err) {
+        console.warn(`[groupings] Cached payload for ${month} failed validation, regenerating:`, err)
+        // fall through to live path
+      }
+    }
+  }
+
+  // Live streaming path — stream Claude deltas, parse JSONL lines as they arrive.
+  const claudeStart = Date.now()
+  console.log(`[groupings] Streaming Claude for ${month}...`)
+
+  return buildStream(async (enqueue, ac) => {
+    enqueue({ type: 'meta', month, cached: false })
+
+    const cleanArray: CachedGrouping[] = []
+
+    try {
+      for await (const { grouping, cached } of parseGroupingStream(
+        streamClaudeDeltas(prompt, ac.signal), orderedIds, knownIds, amountsById,
+      )) {
+        cleanArray.push(cached)
+        enqueue({ type: 'grouping', data: grouping })
+      }
+
+      const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
+      console.log(`[groupings] Stream done for ${month} in ${elapsed}s — ${cleanArray.length} groups`)
+
+      // Persist to cache.
+      if (cleanArray.length > 0) {
+        try {
+          await prisma.monthlyInsight.upsert({
+            where: { month },
+            update: { groupings: JSON.stringify(cleanArray), totalAmount },
+            create: { month, groupings: JSON.stringify(cleanArray), totalAmount },
+          })
+        } catch (err) {
+          console.error('[groupings] cache upsert failed:', err)
+        }
+      }
+
+      enqueue({ type: 'done' })
+    } catch (err) {
+      if (!ac.signal.aborted) {
+        console.error('[groupings] stream error:', err)
+        enqueue({ type: 'error', message: err instanceof Error ? err.message : 'Unknown error' })
+      }
+    }
+  })
 }

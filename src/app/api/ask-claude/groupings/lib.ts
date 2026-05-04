@@ -16,7 +16,6 @@ export const ModelGroupingSchema = z.object({
   why: z.string().trim().min(1).max(500),
   indices: z.array(z.number().int().positive()).min(1),
 })
-export const ModelGroupingsArraySchema = z.array(ModelGroupingSchema)
 export type ModelGrouping = z.infer<typeof ModelGroupingSchema>
 
 // What we persist to MonthlyInsight.groupings (resolved transaction IDs).
@@ -29,25 +28,24 @@ export const CachedGroupingSchema = z.object({
 export const CachedGroupingsArraySchema = z.array(CachedGroupingSchema)
 export type CachedGrouping = z.infer<typeof CachedGroupingSchema>
 
-// What the API returns to the client.
+// What the API streams to the client.
 export interface Grouping extends CachedGrouping {
-  id: string                            // stable hash of name + sorted(transactionIds)
-  total: number                         // absolute sum of member transactions
+  id: string    // stable hash of name + sorted(transactionIds)
+  total: number // absolute sum of member transactions
 }
 
-// Minimal transaction shape needed for prompt building. Decoupled from Prisma
-// so this module is trivial to unit-test.
+// Minimal transaction shape needed for prompt building.
 export interface PromptTransaction {
   id: string
   date: Date
-  amount: number                        // absolute value (caller does the abs)
+  amount: number  // absolute value (caller does the abs)
   description: string
   accountName: string
 }
 
 export interface PromptResult {
   prompt: string
-  orderedIds: string[]                  // index N in the prompt → orderedIds[N-1]
+  orderedIds: string[] // index N in the prompt → orderedIds[N-1]
   totalAmount: number
   amountsById: Map<string, number>
 }
@@ -86,39 +84,50 @@ export function buildGroupingsPrompt(
     `  - trip / travel clusters (foreign merchants, lodging, transit, in a window)`,
     `  - recurring themes a person would want to see totalled`,
     `Skip groupings of a single merchant unless the total is notable. If fewer than`,
-    `${MAX_GROUPINGS} meaningful groupings exist, return fewer (or an empty array).`,
+    `${MAX_GROUPINGS} meaningful groupings exist, return fewer (or nothing after the marker).`,
     ``,
-    `Respond with ONLY a JSON array. No prose, no code fences, no commentary.`,
-    `Each element: {"name": string, "why": short string, "indices": [number, ...]}.`,
+    `Respond with the marker [GROUPS] on its own line, then one JSON object per line`,
+    `(no array brackets, no commas between objects, no prose, no code fences):`,
+    `[GROUPS]`,
+    `{"name":"Japan trip","why":"short reason","indices":[12,13,14,17]}`,
+    `{"name":"Coffee runs","why":"short reason","indices":[5,8,21]}`,
+    ``,
     `"indices" must be the integers in [brackets] from the table above (1-based).`,
-    `Example: [{"name":"Japan trip","why":"...","indices":[12,13,14,17]}]`,
+    `Emit each grouping on its own line as soon as you determine it.`,
   ].join('\n')
 
   return { prompt, orderedIds, totalAmount, amountsById }
 }
 
-// Best-effort JSON-array extraction. The prompt asks for a bare array, but
-// models sometimes wrap it in code fences or add a sentence of preamble. Try
-// strict parse first; on failure, fall back to the first `[...]` slice.
-function extractJsonArray(raw: string): unknown {
+// Parse a single JSONL line emitted by the model. Returns null on any failure
+// so the caller can skip the line and continue processing the rest of the stream.
+export function parseModelLine(raw: string): ModelGrouping | null {
   const trimmed = raw.trim()
+  if (!trimmed || trimmed === '[GROUPS]') return null
   try {
-    return JSON.parse(trimmed)
+    return ModelGroupingSchema.parse(JSON.parse(trimmed))
   } catch {
-    // fall through
+    return null
   }
-  const start = trimmed.indexOf('[')
-  const end = trimmed.lastIndexOf(']')
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error('no JSON array found in model output')
-  }
-  return JSON.parse(trimmed.slice(start, end + 1))
 }
 
-// Throws on parse failure or schema mismatch — caller should map to HTTP 502.
-export function parseModelOutput(raw: string): ModelGrouping[] {
-  const arr = extractJsonArray(raw)
-  return ModelGroupingsArraySchema.parse(arr)
+// Resolve a single ModelGrouping's indices to transaction IDs. Returns null if
+// the resulting set is empty (all indices out of range or all duplicates).
+export function lineToCachedGrouping(
+  model: ModelGrouping,
+  orderedIds: string[],
+): CachedGrouping | null {
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const idx of model.indices) {
+    if (idx < 1 || idx > orderedIds.length) continue
+    const id = orderedIds[idx - 1]
+    if (seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
+  if (ids.length === 0) return null
+  return { name: model.name, why: model.why, transactionIds: ids }
 }
 
 function hashGroupingId(g: Pick<CachedGrouping, 'name' | 'transactionIds'>): string {
@@ -126,55 +135,63 @@ function hashGroupingId(g: Pick<CachedGrouping, 'name' | 'transactionIds'>): str
   return createHash('sha1').update(key).digest('hex').slice(0, 12)
 }
 
-// Resolve model indices to transaction IDs. Drops indices that fall outside
-// the table (defensive against the model going off-script) and dedupes within
-// each grouping. Empty groupings are dropped.
-export function modelToCached(
-  model: ModelGrouping[],
+// Consume a stream of Claude text deltas, locate the [GROUPS] marker, and yield
+// one enriched grouping per valid JSONL line that follows it. Stops yielding
+// after MAX_GROUPINGS but drains the source to let the caller's for-await
+// complete naturally (needed so route.ts can persist to cache after the stream).
+export async function* parseGroupingStream(
+  deltas: AsyncIterable<string>,
   orderedIds: string[],
-): CachedGrouping[] {
-  const out: CachedGrouping[] = []
-  for (const g of model) {
-    const seen = new Set<string>()
-    const ids: string[] = []
-    for (const idx of g.indices) {
-      if (idx < 1 || idx > orderedIds.length) continue
-      const id = orderedIds[idx - 1]
-      if (seen.has(id)) continue
-      seen.add(id)
-      ids.push(id)
-    }
-    if (ids.length === 0) continue
-    out.push({ name: g.name, why: g.why, transactionIds: ids })
-  }
-  return out
-}
-
-// Drop hallucinated/missing transaction ids; drop any grouping that ends up
-// with fewer than 2 members; cap at MAX_GROUPINGS. Returns the cleaned cached
-// form (for persistence) and the enriched form (for the response).
-export function enrichForResponse(
-  cached: CachedGrouping[],
   knownIds: Set<string>,
   amountsById: Map<string, number>,
-): { clean: CachedGrouping[]; enriched: Grouping[] } {
-  const clean: CachedGrouping[] = []
-  const enriched: Grouping[] = []
+): AsyncGenerator<{ grouping: Grouping; cached: CachedGrouping }> {
+  let buf = ''
+  let seenMarker = false
+  let emitted = 0
 
-  for (const g of cached) {
-    const filteredIds = g.transactionIds.filter((id) => knownIds.has(id))
-    if (filteredIds.length < 2) continue
+  for await (const text of deltas) {
+    buf += text
 
-    const cleaned: CachedGrouping = { ...g, transactionIds: filteredIds }
-    const total = filteredIds.reduce((sum, id) => sum + (amountsById.get(id) ?? 0), 0)
-    clean.push(cleaned)
-    enriched.push({
-      ...cleaned,
-      id: hashGroupingId(cleaned),
-      total,
-    })
-    if (clean.length >= MAX_GROUPINGS) break
+    if (!seenMarker) {
+      const idx = buf.indexOf('[GROUPS]')
+      if (idx === -1) continue
+      buf = buf.slice(idx + '[GROUPS]'.length)
+      seenMarker = true
+    }
+
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (emitted >= MAX_GROUPINGS) continue
+      const model = parseModelLine(line)
+      const cached = model && lineToCachedGrouping(model, orderedIds)
+      const grouping = cached && enrichOne(cached, knownIds, amountsById)
+      if (!grouping || !cached) continue
+      yield { grouping, cached }
+      emitted++
+    }
   }
 
-  return { clean, enriched }
+  // Handle trailing content that arrived without a final newline.
+  if (seenMarker && buf.trim() && emitted < MAX_GROUPINGS) {
+    const model = parseModelLine(buf)
+    const cached = model && lineToCachedGrouping(model, orderedIds)
+    const grouping = cached && enrichOne(cached, knownIds, amountsById)
+    if (grouping && cached) yield { grouping, cached }
+  }
+}
+
+// Enrich a single CachedGrouping into a Grouping. Filters out any transactionIds
+// not in `knownIds`, then rejects the grouping if fewer than 2 members remain.
+export function enrichOne(
+  cached: CachedGrouping,
+  knownIds: Set<string>,
+  amountsById: Map<string, number>,
+): Grouping | null {
+  const filteredIds = cached.transactionIds.filter((id) => knownIds.has(id))
+  if (filteredIds.length < 2) return null
+  const cleaned: CachedGrouping = { ...cached, transactionIds: filteredIds }
+  const total = filteredIds.reduce((sum, id) => sum + (amountsById.get(id) ?? 0), 0)
+  return { ...cleaned, id: hashGroupingId(cleaned), total }
 }
