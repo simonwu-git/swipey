@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { streamClaudeDeltas } from '@/lib/claudeStream'
+import { buildNdjsonStream } from '@/lib/ndjson'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -125,80 +126,50 @@ function buildStreamResponse(opts: {
   prompt: string | null
 }): Response {
   const { month, totalAmount, cachedAnswer, prompt } = opts
-  const encoder = new TextEncoder()
-  const ac = new AbortController()
+  return buildNdjsonStream(async (enqueue, ac) => {
+    enqueue({ type: 'meta', month, totalAmount, cached: cachedAnswer !== null })
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const enqueue = (event: unknown) => {
-        try {
-          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
-        } catch {
-          // controller already closed (client disconnected)
-        }
-      }
+    if (cachedAnswer !== null) {
+      // Cache hit — replay the full answer as a single delta.
+      enqueue({ type: 'delta', text: cachedAnswer })
+      enqueue({ type: 'done' })
+    } else if (prompt) {
+      // Cache miss — stream live from Claude CLI.
+      const claudeStart = Date.now()
+      console.log(`[ask-claude] Streaming Claude CLI for ${month}...`)
 
-      enqueue({ type: 'meta', month, totalAmount, cached: cachedAnswer !== null })
-
-      if (cachedAnswer !== null) {
-        // Cache hit — replay the full answer as a single delta.
-        enqueue({ type: 'delta', text: cachedAnswer })
-        enqueue({ type: 'done' })
-      } else if (prompt) {
-        // Cache miss — stream live from Claude CLI.
-        const claudeStart = Date.now()
-        console.log(`[ask-claude] Streaming Claude CLI for ${month}...`)
-
-        let fullText = ''
-        try {
-          for await (const text of streamClaudeDeltas(prompt, ac.signal)) {
-            fullText += text
-            enqueue({ type: 'delta', text })
-          }
-
-          if (fullText) {
-            try {
-              await prisma.monthlyInsight.upsert({
-                where: { month },
-                update: { answer: fullText, totalAmount },
-                create: { month, answer: fullText, totalAmount },
-              })
-            } catch (err) {
-              console.error('[ask-claude] cache upsert failed:', err)
-            }
-          }
-
-          const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
-          console.log(`[ask-claude] Streaming done for ${month} in ${elapsed}s`)
-          enqueue({ type: 'done' })
-        } catch (err) {
-          if (!ac.signal.aborted) {
-            console.error('[ask-claude] stream error:', err)
-            enqueue({
-              type: 'error',
-              message: err instanceof Error ? err.message : 'Unknown error',
-            })
-          }
-        }
-      }
-
+      let fullText = ''
       try {
-        controller.close()
-      } catch {
-        // already closed by cancel
-      }
-    },
-    cancel() {
-      ac.abort()
-    },
-  })
+        for await (const text of streamClaudeDeltas(prompt, ac.signal)) {
+          fullText += text
+          enqueue({ type: 'delta', text })
+        }
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'application/x-ndjson; charset=utf-8',
-      'Cache-Control': 'no-store, no-transform',
-      'X-Accel-Buffering': 'no',
-    },
+        if (fullText) {
+          try {
+            await prisma.monthlyInsight.upsert({
+              where: { month },
+              update: { answer: fullText, totalAmount },
+              create: { month, answer: fullText, totalAmount },
+            })
+          } catch (err) {
+            console.error('[ask-claude] cache upsert failed:', err)
+          }
+        }
+
+        const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
+        console.log(`[ask-claude] Streaming done for ${month} in ${elapsed}s`)
+        enqueue({ type: 'done' })
+      } catch (err) {
+        if (!ac.signal.aborted) {
+          console.error('[ask-claude] stream error:', err)
+          enqueue({
+            type: 'error',
+            message: err instanceof Error ? err.message : 'Unknown error',
+          })
+        }
+      }
+    }
   })
 }
 

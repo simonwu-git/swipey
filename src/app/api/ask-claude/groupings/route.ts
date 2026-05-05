@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { streamClaudeDeltas } from '@/lib/claudeStream'
+import { buildNdjsonStream } from '@/lib/ndjson'
 import {
   CachedGroupingsArraySchema,
   MAX_GROUPINGS,
@@ -31,12 +32,6 @@ import {
 } from './lib'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
-
-const NDJSON_HEADERS = {
-  'Content-Type': 'application/x-ndjson; charset=utf-8',
-  'Cache-Control': 'no-store, no-transform',
-  'X-Accel-Buffering': 'no',
-}
 
 async function loadMonthTransactions(month: string): Promise<PromptTransaction[]> {
   const [year, monthNum] = month.split('-').map(Number)
@@ -62,35 +57,6 @@ async function loadMonthTransactions(month: string): Promise<PromptTransaction[]
     description: r.description,
     accountName: r.account.name,
   }))
-}
-
-function buildStream(
-  fn: (enqueue: (event: unknown) => void, ac: AbortController) => Promise<void>,
-): Response {
-  const encoder = new TextEncoder()
-  const ac = new AbortController()
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const enqueue = (event: unknown) => {
-        try {
-          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
-        } catch {
-          // controller already closed (client disconnected)
-        }
-      }
-      try {
-        await fn(enqueue, ac)
-      } finally {
-        try { controller.close() } catch { /* already closed */ }
-      }
-    },
-    cancel() {
-      ac.abort()
-    },
-  })
-
-  return new Response(stream, { headers: NDJSON_HEADERS })
 }
 
 export async function GET(request: NextRequest) {
@@ -131,7 +97,7 @@ export async function GET(request: NextRequest) {
       try {
         const parsed = CachedGroupingsArraySchema.parse(JSON.parse(cached.groupings))
         console.log(`[groupings] Cache hit for ${month} (${parsed.length} groups)`)
-        return buildStream(async (enqueue) => {
+        return buildNdjsonStream(async (enqueue) => {
           enqueue({ type: 'meta', month, cached: true })
           let emitted = 0
           for (const g of parsed) {
@@ -154,7 +120,7 @@ export async function GET(request: NextRequest) {
   const claudeStart = Date.now()
   console.log(`[groupings] Streaming Claude for ${month}...`)
 
-  return buildStream(async (enqueue, ac) => {
+  return buildNdjsonStream(async (enqueue, ac) => {
     enqueue({ type: 'meta', month, cached: false })
 
     const cleanArray: CachedGrouping[] = []
