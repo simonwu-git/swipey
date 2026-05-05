@@ -12,10 +12,11 @@ import {
   Lightbulb,
   Layers,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
 import { useInsightsStream } from './useInsightsStream';
-import { useGroupings } from './useGroupings';
+import type { Grouping } from './types';
 
 function AnimatedStar({ className }: { className?: string }) {
   return (
@@ -44,6 +45,13 @@ const BULLET_SECTIONS: SectionKey[] = ['patterns', 'suggestions'];
 
 interface InsightsSectionProps {
   month: string | null;
+  groupings: Grouping[];
+  groupingsLoading: boolean;
+  groupingsError: string | null;
+  activeGroupingId: string | null;
+  onGroupingClick: (id: string | null) => void;
+  onGroupingsTabOpen: () => void;
+  refreshGroupings: () => void;
 }
 
 function renderContent(text: string, isBulletSection: boolean) {
@@ -67,7 +75,16 @@ function renderContent(text: string, isBulletSection: boolean) {
   return <p>{text}</p>;
 }
 
-export function InsightsSection({ month }: InsightsSectionProps) {
+export function InsightsSection({
+  month,
+  groupings,
+  groupingsLoading,
+  groupingsError,
+  activeGroupingId,
+  onGroupingClick,
+  onGroupingsTabOpen,
+  refreshGroupings,
+}: InsightsSectionProps) {
   const { isPrivacyMode } = usePrivacy();
   const { insight, isLoading, error, refresh } = useInsightsStream(month);
   const [activeSection, setActiveSection] = useState<ActiveSection>('summary');
@@ -82,13 +99,6 @@ export function InsightsSection({ month }: InsightsSectionProps) {
     if (!insight) return null;
     return parseInsights(insight);
   }, [insight]);
-
-  const {
-    groupings,
-    isLoading: groupingsLoading,
-    error: groupingsError,
-    refresh: refreshGroupings,
-  } = useGroupings(month, activeSection === 'groups');
 
   const renderBody = () => {
     if (error) {
@@ -147,7 +157,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                     variant={activeSection === 'groups' ? 'secondary' : 'ghost'}
                     size="sm"
                     className="h-7 px-2 text-xs gap-1"
-                    onClick={() => setActiveSection('groups')}
+                    onClick={() => { onGroupingsTabOpen(); setActiveSection('groups'); }}
                   >
                     <Layers className="h-3 w-3" />
                     Groups
@@ -159,7 +169,7 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                       {groupingsLoading && groupings.length === 0 && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Analyzing groupings...
+                          Finding groupings...
                         </div>
                       )}
                       {groupingsError && (
@@ -173,7 +183,15 @@ export function InsightsSection({ month }: InsightsSectionProps) {
                       {groupings.map((g) => (
                         <div
                           key={g.id}
-                          className="rounded-lg border border-border bg-card p-3"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => onGroupingClick(g.id === activeGroupingId ? null : g.id)}
+                          className={cn(
+                            'rounded-lg border p-3 cursor-pointer transition-colors',
+                            activeGroupingId === g.id
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                              : 'border-border bg-card hover:bg-muted',
+                          )}
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-display font-medium">{g.name}</span>

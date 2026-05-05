@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import { Transaction } from './types';
 import { SankeySection } from './SankeySection';
 import { TransactionTableSection } from './TransactionTableSection';
 import { InsightsSection } from './InsightsSection';
+import { useGroupings } from './useGroupings';
 
 function SkeletonBar({ width, className }: { width: string; className?: string }) {
   return (
@@ -56,6 +57,9 @@ export function TransactionModal({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredAccountId, setFilteredAccountId] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeGroupingId, setActiveGroupingId] = useState<string | null>(null);
+  // Lazily enabled when the user first opens the Groups sub-tab.
+  const [groupingsEnabled, setGroupingsEnabled] = useState(false);
   const { isPrivacyMode, formatCurrency } = usePrivacy();
   const [amountSort, setAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [summary, setSummary] = useState({
@@ -64,6 +68,33 @@ export function TransactionModal({
     previousMonthTotal: null as number | null,
     month: '',
   });
+
+  const {
+    groupings,
+    isLoading: groupingsLoading,
+    error: groupingsError,
+    refresh: refreshGroupings,
+  } = useGroupings(month, groupingsEnabled);
+
+  // Reset grouping state when the month changes.
+  useEffect(() => {
+    setActiveGroupingId(null);
+    setGroupingsEnabled(false);
+  }, [month]);
+
+  const highlightedTransactionIds = useMemo<Set<string>>(() => {
+    if (!activeGroupingId) return new Set();
+    const active = groupings.find((g) => g.id === activeGroupingId);
+    return new Set(active?.transactionIds ?? []);
+  }, [activeGroupingId, groupings]);
+
+  const onGroupingClick = useCallback((id: string | null) => {
+    setActiveGroupingId(id);
+  }, []);
+
+  const onGroupingsTabOpen = useCallback(() => {
+    setGroupingsEnabled(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen && month) {
@@ -225,7 +256,16 @@ export function TransactionModal({
                 </CardContent>
               </Card>
               <div className="flex-1 min-w-0">
-                <InsightsSection month={month} />
+                <InsightsSection
+                  month={month}
+                  groupings={groupings}
+                  groupingsLoading={groupingsLoading}
+                  groupingsError={groupingsError}
+                  activeGroupingId={activeGroupingId}
+                  onGroupingClick={onGroupingClick}
+                  onGroupingsTabOpen={onGroupingsTabOpen}
+                  refreshGroupings={refreshGroupings}
+                />
               </div>
             </div>
 
@@ -257,6 +297,7 @@ export function TransactionModal({
                 onCycleSort={cycleAmountSort}
                 formatDate={formatDate}
                 formatCurrency={formatCurrency}
+                highlightedTransactionIds={highlightedTransactionIds}
               />
             </div>
           </TabsContent>

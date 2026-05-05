@@ -61,6 +61,7 @@ interface TransactionTableSectionProps {
   onCycleSort: () => void;
   formatDate: (date: string) => string;
   formatCurrency: (value: number) => string;
+  highlightedTransactionIds?: Set<string>;
 }
 
 export function TransactionTableSection({
@@ -71,6 +72,7 @@ export function TransactionTableSection({
   onCycleSort,
   formatDate,
   formatCurrency,
+  highlightedTransactionIds,
 }: TransactionTableSectionProps) {
   if (isLoading) {
     return (
@@ -119,7 +121,10 @@ export function TransactionTableSection({
       </TableHeader>
       <TableBody>
         {sortedTransactions.map((transaction) => (
-          <TableRow key={transaction.id}>
+          <TableRow
+            key={transaction.id}
+            className={cn(highlightedTransactionIds?.has(transaction.id) && 'bg-primary/10')}
+          >
             <TableCell className="whitespace-nowrap">
               {formatDate(transaction.date)}
             </TableCell>
