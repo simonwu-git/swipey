@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readNdjsonLines } from '@/lib/ndjson';
-import type { Grouping } from './types';
+import type { Grouping } from '@/lib/groupings';
 
 type GroupingStreamEvent =
   | { type: 'meta'; month: string; cached: boolean }

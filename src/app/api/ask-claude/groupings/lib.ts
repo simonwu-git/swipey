@@ -5,6 +5,7 @@
 
 import { createHash } from 'crypto'
 import { z } from 'zod'
+import type { Grouping } from '@/lib/groupings'
 
 export const MAX_GROUPINGS = 3
 
@@ -27,12 +28,6 @@ export const CachedGroupingSchema = z.object({
 })
 export const CachedGroupingsArraySchema = z.array(CachedGroupingSchema)
 export type CachedGrouping = z.infer<typeof CachedGroupingSchema>
-
-// What the API streams to the client.
-export interface Grouping extends CachedGrouping {
-  id: string    // stable hash of name + sorted(transactionIds)
-  total: number // absolute sum of member transactions
-}
 
 // Minimal transaction shape needed for prompt building.
 export interface PromptTransaction {

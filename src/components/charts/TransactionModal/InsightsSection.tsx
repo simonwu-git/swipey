@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
 import { useInsightsStream } from './useInsightsStream';
-import type { Grouping } from './types';
+import type { Grouping } from '@/lib/groupings';
 
 function AnimatedStar({ className }: { className?: string }) {
   return (
