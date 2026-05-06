@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { streamClaudeDeltas } from '@/lib/claudeStream'
+import { getProvider } from '@/lib/aiProvider'
 import { buildNdjsonStream } from '@/lib/ndjson'
 import {
   CachedGroupingsArraySchema,
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
   // Live streaming path — stream Claude deltas, parse JSONL lines as they arrive.
   const claudeStart = Date.now()
-  console.log(`[groupings] Streaming Claude for ${month}...`)
+  console.log(`[groupings] Streaming ${process.env.WORKERS_AI_MODEL} for ${month}...`)
 
   return buildNdjsonStream(async (enqueue, ac) => {
     enqueue({ type: 'meta', month, cached: false })
@@ -127,7 +127,11 @@ export async function GET(request: NextRequest) {
 
     try {
       for await (const { grouping, cached } of parseGroupingStream(
-        streamClaudeDeltas(prompt, ac.signal), orderedIds, knownIds, amountsById,
+        getProvider().streamTextDeltas({
+          prompt,
+          system: 'You are a JSON-only assistant. Output exclusively the format shown in <output> tags. No explanations, no extra text.',
+          signal: ac.signal,
+        }), orderedIds, knownIds, amountsById,
       )) {
         cleanArray.push(cached)
         enqueue({ type: 'grouping', data: grouping })

@@ -2,7 +2,7 @@ import { streamClaudeDeltas } from './claudeStream'
 import { workersAiProvider } from './workersAi'
 
 export interface AiProvider {
-  streamTextDeltas(opts: { prompt: string; signal?: AbortSignal }): AsyncIterable<string>
+  streamTextDeltas(opts: { prompt: string; system?: string; signal?: AbortSignal }): AsyncIterable<string>
 }
 
 export function getProvider(): AiProvider {

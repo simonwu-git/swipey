@@ -1,11 +1,15 @@
+import { parseSSEStream } from './sseStream'
+
 const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 
 export const workersAiProvider = {
   async *streamTextDeltas({
     prompt,
+    system,
     signal,
   }: {
     prompt: string
+    system?: string
     signal?: AbortSignal
   }): AsyncGenerator<string> {
     const accountId = process.env.WORKERS_AI_ACCOUNT_ID
@@ -25,8 +29,12 @@ export const workersAiProvider = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          ...(system ? [{ role: 'system', content: system }] : []),
+          { role: 'user', content: prompt },
+        ],
         stream: true,
+        max_tokens: 8192,
       }),
       signal,
     })
@@ -36,35 +44,6 @@ export const workersAiProvider = {
       throw new Error(`Workers AI ${res.status}: ${body.slice(0, 200)}`)
     }
 
-    const reader = res.body!.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const events = buffer.split('\n\n')
-        buffer = events.pop() ?? ''
-        for (const event of events) {
-          for (const line of event.split('\n')) {
-            if (!line.startsWith('data: ')) continue
-            const data = line.slice(6)
-            if (data === '[DONE]') return
-            let parsed: unknown
-            try {
-              parsed = JSON.parse(data)
-            } catch {
-              continue
-            }
-            const text = (parsed as Record<string, unknown>)?.response
-            if (typeof text === 'string' && text) yield text
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock()
-    }
+    yield* parseSSEStream(res.body!)
   },
 }

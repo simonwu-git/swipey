@@ -65,30 +65,24 @@ export function buildGroupingsPrompt(
   }
 
   const prompt = [
-    `You are analyzing one month of bank transactions for a personal-finance app.`,
-    ``,
-    `Month: ${month}`,
-    `Total: $${totalAmount.toFixed(2)} across ${transactions.length} transactions`,
-    ``,
-    `Transactions ([index] date | account | description | amount):`,
+    `<transactions month="${month}" total="${totalAmount.toFixed(2)}" count="${transactions.length}">`,
     ...rows,
+    `</transactions>`,
     ``,
-    `Surface up to ${MAX_GROUPINGS} of the MOST INTERESTING groupings of these transactions.`,
-    `A good grouping has a name a human would naturally use ("Japan trip", "Coffee runs",`,
-    `"Home reno", "New pet expenses") and aggregates to a meaningful total. Prefer:`,
-    `  - trip / travel clusters (foreign merchants, lodging, transit, in a window)`,
-    `  - recurring themes a person would want to see totalled`,
-    `Skip groupings of a single merchant unless the total is notable. If fewer than`,
-    `${MAX_GROUPINGS} meaningful groupings exist, return fewer (or nothing after the marker).`,
+    `<task>`,
+    `Find up to ${MAX_GROUPINGS} interesting spending groups in the transactions above.`,
+    `Good groups: travel clusters ("Japan trip"), recurring themes ("Coffee runs", "Home reno").`,
+    `Skip single-merchant groups unless the total is notable.`,
+    `Use the 1-based index numbers shown in [brackets].`,
+    `</task>`,
     ``,
-    `Respond with the marker [GROUPS] on its own line, then one JSON object per line`,
-    `(no array brackets, no commas between objects, no prose, no code fences):`,
+    `<output>`,
     `[GROUPS]`,
-    `{"name":"Japan trip","why":"short reason","indices":[12,13,14,17]}`,
-    `{"name":"Coffee runs","why":"short reason","indices":[5,8,21]}`,
+    `{"name":"Japan trip","why":"flights hotels transit","indices":[12,13,14,17]}`,
+    `{"name":"Coffee runs","why":"recurring cafe visits","indices":[5,8,21]}`,
+    `</output>`,
     ``,
-    `"indices" must be the integers in [brackets] from the table above (1-based).`,
-    `Emit each grouping on its own line as soon as you determine it.`,
+    `Respond with ONLY the [GROUPS] line and the JSON objects. No other text.`,
   ].join('\n')
 
   return { prompt, orderedIds, totalAmount, amountsById }
@@ -130,7 +124,7 @@ function hashGroupingId(g: Pick<CachedGrouping, 'name' | 'transactionIds'>): str
   return createHash('sha1').update(key).digest('hex').slice(0, 12)
 }
 
-// Consume a stream of Claude text deltas, locate the [GROUPS] marker, and yield
+// Consume a stream of text deltas, locate the [GROUPS] marker, and yield
 // one enriched grouping per valid JSONL line that follows it. Stops yielding
 // after MAX_GROUPINGS but drains the source to let the caller's for-await
 // complete naturally (needed so route.ts can persist to cache after the stream).
