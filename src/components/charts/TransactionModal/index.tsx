@@ -25,6 +25,7 @@ import { SankeySection } from './SankeySection';
 import { TransactionTableSection } from './TransactionTableSection';
 import { InsightsSection } from './InsightsSection';
 import { useGroupings } from './useGroupings';
+import { useGroupingEdit } from './useGroupingEdit';
 
 function SkeletonBar({ width, className }: { width: string; className?: string }) {
   return (
@@ -74,7 +75,19 @@ export function TransactionModal({
     isLoading: groupingsLoading,
     error: groupingsError,
     refresh: refreshGroupings,
+    updateGrouping,
   } = useGroupings(month, groupingsEnabled);
+
+  const {
+    editingGroupingId,
+    editingTxIds,
+    isSaving,
+    editError,
+    startEdit,
+    cancelEdit,
+    toggleEditingTxId,
+    saveEdit,
+  } = useGroupingEdit({ month, groupings, updateGrouping, onSaved: setActiveGroupingId });
 
   // Reset grouping state when the month changes.
   useEffect(() => {
@@ -83,10 +96,11 @@ export function TransactionModal({
   }, [month]);
 
   const highlightedTransactionIds = useMemo<Set<string>>(() => {
+    if (editingGroupingId) return editingTxIds;
     if (!activeGroupingId) return new Set();
     const active = groupings.find((g) => g.id === activeGroupingId);
     return new Set(active?.transactionIds ?? []);
-  }, [activeGroupingId, groupings]);
+  }, [editingGroupingId, editingTxIds, activeGroupingId, groupings]);
 
   const onGroupingClick = useCallback((id: string | null) => {
     setActiveGroupingId(id);
@@ -265,6 +279,14 @@ export function TransactionModal({
                   onGroupingClick={onGroupingClick}
                   onGroupingsTabOpen={onGroupingsTabOpen}
                   refreshGroupings={refreshGroupings}
+                  editingGroupingId={editingGroupingId}
+                  editingTxIds={editingTxIds}
+                  isSaving={isSaving}
+                  editError={editError}
+                  onStartEdit={startEdit}
+                  onCancelEdit={cancelEdit}
+                  onSaveEdit={saveEdit}
+                  transactions={transactions}
                 />
               </div>
             </div>
@@ -298,6 +320,9 @@ export function TransactionModal({
                 formatDate={formatDate}
                 formatCurrency={formatCurrency}
                 highlightedTransactionIds={highlightedTransactionIds}
+                editing={editingGroupingId !== null}
+                editingTxIds={editingTxIds}
+                onToggleEditingTx={toggleEditingTxId}
               />
             </div>
           </TabsContent>

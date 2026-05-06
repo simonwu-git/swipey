@@ -119,7 +119,7 @@ export function lineToCachedGrouping(
   return { name: model.name, why: model.why, transactionIds: ids }
 }
 
-function hashGroupingId(g: Pick<CachedGrouping, 'name' | 'transactionIds'>): string {
+export function hashGroupingId(g: Pick<CachedGrouping, 'name' | 'transactionIds'>): string {
   const key = g.name + '|' + [...g.transactionIds].sort().join(',')
   return createHash('sha1').update(key).digest('hex').slice(0, 12)
 }

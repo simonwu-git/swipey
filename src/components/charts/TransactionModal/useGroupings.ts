@@ -21,6 +21,7 @@ export interface UseGroupingsResult {
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
+  updateGrouping: (groupingId: string, transactionIds: string[]) => Promise<Grouping>;
 }
 
 export function useGroupings(month: string | null, enabled: boolean): UseGroupingsResult {
@@ -106,5 +107,19 @@ export function useGroupings(month: string | null, enabled: boolean): UseGroupin
 
   const refresh = useCallback(() => fetchGroupings(true), [fetchGroupings]);
 
-  return { groupings, isLoading, error, refresh };
+  const updateGrouping = useCallback(async (groupingId: string, transactionIds: string[]): Promise<Grouping> => {
+    if (!month) throw new Error('No month set');
+    const response = await fetch('/api/ask-claude/groupings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month, groupingId, transactionIds }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error ?? 'Failed to save grouping');
+    const updated: Grouping = data.grouping;
+    setGroupings((prev) => prev.map((g) => (g.id === groupingId ? updated : g)));
+    return updated;
+  }, [month]);
+
+  return { groupings, isLoading, error, refresh, updateGrouping };
 }

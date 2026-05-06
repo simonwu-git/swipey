@@ -26,6 +26,7 @@ import {
   MAX_GROUPINGS,
   buildGroupingsPrompt,
   enrichOne,
+  hashGroupingId,
   parseGroupingStream,
   type CachedGrouping,
   type PromptTransaction,
@@ -161,4 +162,83 @@ export async function GET(request: NextRequest) {
       }
     }
   })
+}
+
+// PATCH /api/ask-claude/groupings
+// Body: { month: "YYYY-MM", groupingId: string, transactionIds: string[] }
+// Updates the membership of a single grouping (user correction of AI result).
+export async function PATCH(request: NextRequest) {
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  const { month, groupingId, transactionIds } = body as Record<string, unknown>
+
+  if (typeof month !== 'string' || !MONTH_RE.test(month)) {
+    return NextResponse.json({ error: 'month must be in YYYY-MM format' }, { status: 400 })
+  }
+  if (typeof groupingId !== 'string' || !groupingId) {
+    return NextResponse.json({ error: 'groupingId is required' }, { status: 400 })
+  }
+  if (!Array.isArray(transactionIds) || transactionIds.some((id) => typeof id !== 'string')) {
+    return NextResponse.json({ error: 'transactionIds must be an array of strings' }, { status: 400 })
+  }
+  const dedupedIds = [...new Set(transactionIds as string[])]
+  if (dedupedIds.length < 2) {
+    return NextResponse.json({ error: 'A group must have at least 2 transactions' }, { status: 400 })
+  }
+
+  // Load and find the target grouping.
+  const row = await prisma.monthlyInsight.findUnique({ where: { month } })
+  if (!row?.groupings) {
+    return NextResponse.json({ error: 'No groupings found for this month' }, { status: 404 })
+  }
+
+  let cached: CachedGrouping[]
+  try {
+    cached = CachedGroupingsArraySchema.parse(JSON.parse(row.groupings))
+  } catch {
+    return NextResponse.json({ error: 'Stored groupings are malformed' }, { status: 500 })
+  }
+
+  const targetIndex = cached.findIndex((g) => hashGroupingId(g) === groupingId)
+  if (targetIndex === -1) {
+    return NextResponse.json(
+      { error: 'Grouping not found — it may have changed, please refresh' },
+      { status: 404 },
+    )
+  }
+
+  // Validate submitted ids belong to this month's transactions.
+  const monthTransactions = await loadMonthTransactions(month)
+  const knownIds = new Set(monthTransactions.map((t) => t.id))
+  const amountsById = new Map(monthTransactions.map((t) => [t.id, t.amount]))
+  const unknown = dedupedIds.filter((id) => !knownIds.has(id))
+  if (unknown.length > 0) {
+    return NextResponse.json(
+      { error: `Unknown transaction ids: ${unknown.join(', ')}` },
+      { status: 400 },
+    )
+  }
+
+  // storedEntry is what goes in the DB (CachedGrouping — no derived id/total).
+  // enriched is what the client gets back (Grouping — adds computed id + total).
+  // This mirrors the GET path: store bare shape, compute derived fields on read.
+  const storedEntry: CachedGrouping = { ...cached[targetIndex], transactionIds: dedupedIds }
+  const enriched = enrichOne(storedEntry, knownIds, amountsById)
+  if (!enriched) {
+    return NextResponse.json({ error: 'A group must have at least 2 valid transactions' }, { status: 400 })
+  }
+
+  const updatedArray = [...cached]
+  updatedArray[targetIndex] = storedEntry
+  await prisma.monthlyInsight.update({
+    where: { month },
+    data: { groupings: JSON.stringify(updatedArray) },
+  })
+
+  return NextResponse.json({ grouping: enriched })
 }

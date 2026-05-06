@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/lib/privacy';
 import { parseInsights } from './parseInsights';
 import { useInsightsStream } from './useInsightsStream';
+import { GroupingCard } from './GroupingCard';
 import type { Grouping } from '@/lib/groupings';
 
 function AnimatedStar({ className }: { className?: string }) {
@@ -52,7 +53,17 @@ interface InsightsSectionProps {
   onGroupingClick: (id: string | null) => void;
   onGroupingsTabOpen: () => void;
   refreshGroupings: () => void;
+  // Edit-mode props
+  editingGroupingId: string | null;
+  editingTxIds: Set<string>;
+  isSaving: boolean;
+  editError: string | null;
+  onStartEdit: (id: string) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  transactions: Array<{ id: string; amount: number }>;
 }
+
 
 function renderContent(text: string, isBulletSection: boolean) {
   if (!text) return <span className="text-muted-foreground italic">No data</span>;
@@ -84,6 +95,14 @@ export function InsightsSection({
   onGroupingClick,
   onGroupingsTabOpen,
   refreshGroupings,
+  editingGroupingId,
+  editingTxIds,
+  isSaving,
+  editError,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  transactions,
 }: InsightsSectionProps) {
   const { isPrivacyMode } = usePrivacy();
   const { insight, isLoading, error, refresh } = useInsightsStream(month);
@@ -99,6 +118,21 @@ export function InsightsSection({
     if (!insight) return null;
     return parseInsights(insight);
   }, [insight]);
+
+  const editingTotal = useMemo(() => {
+    if (!editingGroupingId) return 0;
+    return transactions
+      .filter((t) => editingTxIds.has(t.id))
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [editingGroupingId, editingTxIds, transactions]);
+
+  const hasChanges = useMemo(() => {
+    if (!editingGroupingId) return false;
+    const original = groupings.find((g) => g.id === editingGroupingId);
+    if (!original) return false;
+    if (editingTxIds.size !== original.transactionIds.length) return true;
+    return original.transactionIds.some((id) => !editingTxIds.has(id));
+  }, [editingGroupingId, editingTxIds, groupings]);
 
   const renderBody = () => {
     if (error) {
@@ -175,7 +209,7 @@ export function InsightsSection({
                           className="h-6 w-6 p-0"
                           onClick={refreshGroupings}
                           title="Regenerate groupings"
-                          disabled={groupingsLoading}
+                          disabled={groupingsLoading || editingGroupingId !== null}
                         >
                           <RefreshCw className={cn('h-3 w-3', groupingsLoading && 'animate-spin')} />
                         </Button>
@@ -194,28 +228,29 @@ export function InsightsSection({
                           No clear groupings for this month.
                         </p>
                       )}
-                      {groupings.map((g) => (
-                        <div
-                          key={g.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => onGroupingClick(g.id === activeGroupingId ? null : g.id)}
-                          className={cn(
-                            'rounded-lg border p-3 cursor-pointer transition-colors',
-                            activeGroupingId === g.id
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                              : 'border-border bg-card hover:bg-muted',
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-display font-medium">{g.name}</span>
-                            <span className="text-xs text-muted-foreground tabular-nums">
-                              {g.transactionIds.length} tx · ${g.total.toFixed(2)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{g.why}</p>
-                        </div>
-                      ))}
+                      {groupings.map((g) => {
+                        const isEditing = g.id === editingGroupingId;
+                        const isActive = g.id === activeGroupingId;
+                        const isDimmed = editingGroupingId !== null && !isEditing;
+                        return (
+                          <GroupingCard
+                            key={g.id}
+                            grouping={g}
+                            isEditing={isEditing}
+                            isActive={isActive}
+                            isDimmed={isDimmed}
+                            editingTxIds={editingTxIds}
+                            editingTotal={editingTotal}
+                            isSaving={isSaving}
+                            editError={editError}
+                            hasChanges={hasChanges}
+                            onCardClick={isDimmed || isEditing ? undefined : () => onGroupingClick(isActive ? null : g.id)}
+                            onStartEdit={onStartEdit}
+                            onCancelEdit={onCancelEdit}
+                            onSaveEdit={onSaveEdit}
+                          />
+                        );
+                      })}
                       {groupingsLoading && groupings.length > 0 && (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin" />

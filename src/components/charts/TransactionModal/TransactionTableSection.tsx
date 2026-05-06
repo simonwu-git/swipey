@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Transaction } from './types';
 
@@ -62,6 +63,9 @@ interface TransactionTableSectionProps {
   formatDate: (date: string) => string;
   formatCurrency: (value: number) => string;
   highlightedTransactionIds?: Set<string>;
+  editing?: boolean;
+  editingTxIds?: Set<string>;
+  onToggleEditingTx?: (id: string) => void;
 }
 
 export function TransactionTableSection({
@@ -73,6 +77,9 @@ export function TransactionTableSection({
   formatDate,
   formatCurrency,
   highlightedTransactionIds,
+  editing = false,
+  editingTxIds,
+  onToggleEditingTx,
 }: TransactionTableSectionProps) {
   if (isLoading) {
     return (
@@ -107,6 +114,7 @@ export function TransactionTableSection({
     <Table>
       <TableHeader>
         <TableRow>
+          {editing && <TableHead className="w-10" />}
           <TableHead>Date</TableHead>
           <TableHead>Account</TableHead>
           <TableHead>Description</TableHead>
@@ -125,6 +133,15 @@ export function TransactionTableSection({
             key={transaction.id}
             className={cn(highlightedTransactionIds?.has(transaction.id) && 'bg-primary/10')}
           >
+            {editing && (
+              <TableCell className="pr-0">
+                <Checkbox
+                  checked={editingTxIds?.has(transaction.id) ?? false}
+                  onCheckedChange={() => onToggleEditingTx?.(transaction.id)}
+                  aria-label="Include in group"
+                />
+              </TableCell>
+            )}
             <TableCell className="whitespace-nowrap">
               {formatDate(transaction.date)}
             </TableCell>
