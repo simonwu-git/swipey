@@ -127,15 +127,17 @@ export function InsightsSection({
           <div className="flex items-center gap-2 mb-2">
             <AnimatedStar className="ai-sparkle h-4 w-4" />
             <span className="text-sm font-medium">Insights</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto h-6 w-6 p-0"
-              onClick={() => { refresh(); refreshGroupings(); }}
-              title="Regenerate insights and groups"
-            >
-              <RefreshCw className="h-3 w-3" />
-            </Button>
+            {activeSection !== 'groups' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 w-6 p-0"
+                onClick={refresh}
+                title="Regenerate insights"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+            )}
           </div>
           <div className={isPrivacyMode ? 'blur-sm select-none' : ''}>
             {parsed ? (
@@ -166,10 +168,22 @@ export function InsightsSection({
                 <div className="text-sm">
                   {activeSection === 'groups' ? (
                     <div className="space-y-2">
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={refreshGroupings}
+                          title="Regenerate groupings"
+                          disabled={groupingsLoading}
+                        >
+                          <RefreshCw className={cn('h-3 w-3', groupingsLoading && 'animate-spin')} />
+                        </Button>
+                      </div>
                       {groupingsLoading && groupings.length === 0 && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Finding groupings...
+                          Analyzing groupings...
                         </div>
                       )}
                       {groupingsError && (
