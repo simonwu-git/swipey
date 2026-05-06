@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Transaction } from './types';
+import { Transaction } from '../types';
 
 function SkeletonBar({ width, className }: { width: string; className?: string }) {
   return (

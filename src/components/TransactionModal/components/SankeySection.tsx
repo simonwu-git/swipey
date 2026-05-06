@@ -1,7 +1,7 @@
 'use client';
 
-import { CategorySankeyChart } from '../CategorySankeyChart';
-import { Transaction } from './types';
+import { CategorySankeyChart } from '@/components/charts/CategorySankeyChart';
+import { Transaction } from '../types';
 
 function LoadingSpinner() {
   return (

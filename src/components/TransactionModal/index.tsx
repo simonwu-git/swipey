@@ -21,11 +21,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/lib/privacy';
 import { Transaction } from './types';
-import { SankeySection } from './SankeySection';
-import { TransactionTableSection } from './TransactionTableSection';
-import { InsightsSection } from './InsightsSection';
-import { useGroupings } from './useGroupings';
-import { useGroupingEdit } from './useGroupingEdit';
+import { SankeySection } from './components/SankeySection';
+import { TransactionTableSection } from './components/TransactionTableSection';
+import { InsightsSection } from './components/InsightsSection';
+import { useGroupings } from './hooks/useGroupings';
+import { useGroupingEdit } from './hooks/useGroupingEdit';
 
 function SkeletonBar({ width, className }: { width: string; className?: string }) {
   return (

@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePrivacy } from '@/lib/privacy';
-import { parseInsights } from './parseInsights';
-import { useInsightsStream } from './useInsightsStream';
+import { parseInsights } from '../parseInsights';
+import { useInsightsStream } from '../hooks/useInsightsStream';
 import { GroupingCard } from './GroupingCard';
 import type { Grouping } from '@/lib/groupings';
 

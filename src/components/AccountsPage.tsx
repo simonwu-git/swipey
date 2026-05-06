@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { BankLogo } from '@/components/BankLogo'
 import { SpendingLineChart } from '@/components/charts/SpendingLineChart'
-import { TransactionModal } from '@/components/charts/TransactionModal'
+import { TransactionModal } from '@/components/TransactionModal'
 import { formatAccountLabel } from '@/lib/accountDisplay'
 
 interface Account {
