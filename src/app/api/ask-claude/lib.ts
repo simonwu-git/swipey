@@ -46,11 +46,11 @@ export function buildInsightsPrompt(
     `</context>`,
     ``,
     `<task>`,
-    `Analyze the spending for ${monthLabel}. Write:`,
-    `- One sentence overall takeaway for the month.`,
-    `- 2–3 bullet points of notable patterns or unusual spending.`,
-    `- 1–2 sentences comparing to the previous month.`,
-    `- 2–3 actionable suggestions.`,
+    `Analyze the spending for ${monthLabel}. Be specific: cite dollar amounts, counts, and percentages of total where they add insight. Write:`,
+    `- One sentence overall takeaway including the total spend.`,
+    `- 2–3 bullet points of notable patterns or unusual spending, each with a dollar amount or count.`,
+    `- 1–2 sentences comparing to the previous month with specific figures.`,
+    `- 2–3 actionable suggestions tied to the patterns you identified.`,
     `</task>`,
     ``,
     `<output>`,
@@ -69,7 +69,7 @@ export function buildInsightsPrompt(
     `- Second suggestion`,
     `</output>`,
     ``,
-    `Respond with ONLY the four sections shown above. No preamble, no closing remarks.`,
+    `Respond with ONLY the four sections shown above. Use real figures from the transactions. No preamble, no closing remarks.`,
   ].join('\n')
 
   return { prompt, totalAmount }
