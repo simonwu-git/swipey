@@ -2,14 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { parseInsights } from './parseInsights'
 
 describe('parseInsights', () => {
-  it('parses all 4 sections correctly', () => {
+  it('parses all 3 sections correctly', () => {
     const raw =
-      '[SUMMARY] Sum content [PATTERNS] Pat content [COMPARISON] Comp content [SUGGESTIONS] Sug content'
+      '[SPOTLIGHT] Spot content [PATTERNS] Pat content [SUGGESTIONS] Sug content'
     const result = parseInsights(raw)
     expect(result).toEqual({
-      summary: 'Sum content',
+      spotlight: 'Spot content',
       patterns: 'Pat content',
-      comparison: 'Comp content',
       suggestions: 'Sug content',
     })
   })
@@ -22,39 +21,42 @@ describe('parseInsights', () => {
     expect(parseInsights('')).toBeNull()
   })
 
+  it('returns null for old four-section format (legacy cache)', () => {
+    const raw = '[SUMMARY] Sum content [PATTERNS] Pat content [COMPARISON] Comp content [SUGGESTIONS] Sug content'
+    expect(parseInsights(raw)).toBeNull()
+  })
+
   it('parses sections in non-standard order', () => {
-    const raw = '[SUGGESTIONS] First [SUMMARY] Second [COMPARISON] Third [PATTERNS] Fourth'
+    const raw = '[SUGGESTIONS] First [SPOTLIGHT] Second [PATTERNS] Third'
     const result = parseInsights(raw)
     expect(result).toEqual({
-      summary: 'Second',
-      patterns: 'Fourth',
-      comparison: 'Third',
+      spotlight: 'Second',
+      patterns: 'Third',
       suggestions: 'First',
     })
   })
 
   it('defaults missing sections to empty string', () => {
-    const raw = '[SUMMARY] Only summary here'
+    const raw = '[SPOTLIGHT] Only spotlight here'
     const result = parseInsights(raw)
     expect(result).toEqual({
-      summary: 'Only summary here',
+      spotlight: 'Only spotlight here',
       patterns: '',
-      comparison: '',
       suggestions: '',
     })
   })
 
   it('ignores preamble before the first label', () => {
-    const raw = 'Some preamble text\n[SUMMARY] The summary [PATTERNS] The patterns'
+    const raw = 'Some preamble text\n[SPOTLIGHT] The spotlight [PATTERNS] The patterns'
     const result = parseInsights(raw)
-    expect(result?.summary).toBe('The summary')
+    expect(result?.spotlight).toBe('The spotlight')
     expect(result?.patterns).toBe('The patterns')
   })
 
   it('preserves multiline content within a section', () => {
-    const raw = '[SUMMARY] Line one\nLine two\nLine three [PATTERNS] Pat'
+    const raw = '[SPOTLIGHT] Line one\nLine two\nLine three [PATTERNS] Pat'
     const result = parseInsights(raw)
-    expect(result?.summary).toBe('Line one\nLine two\nLine three')
+    expect(result?.spotlight).toBe('Line one\nLine two\nLine three')
     expect(result?.patterns).toBe('Pat')
   })
 })

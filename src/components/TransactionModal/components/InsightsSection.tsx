@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import {
   Loader2,
   RefreshCw,
-  FileText,
+  Eye,
   TrendingUp,
-  ArrowLeftRight,
   Lightbulb,
   Layers,
 } from 'lucide-react';
@@ -33,9 +32,8 @@ function AnimatedStar({ className }: { className?: string }) {
 }
 
 const SECTIONS = [
-  { key: 'summary', label: 'Summary', Icon: FileText },
+  { key: 'spotlight', label: 'Spotlight', Icon: Eye },
   { key: 'patterns', label: 'Patterns', Icon: TrendingUp },
-  { key: 'comparison', label: 'Comparison', Icon: ArrowLeftRight },
   { key: 'suggestions', label: 'Tips', Icon: Lightbulb },
 ] as const;
 
@@ -106,12 +104,12 @@ export function InsightsSection({
 }: InsightsSectionProps) {
   const { isPrivacyMode } = usePrivacy();
   const { insight, isLoading, error, refresh } = useInsightsStream(month);
-  const [activeSection, setActiveSection] = useState<ActiveSection>('summary');
+  const [activeSection, setActiveSection] = useState<ActiveSection>('spotlight');
 
   const [prevMonth, setPrevMonth] = useState(month);
   if (prevMonth !== month) {
     setPrevMonth(month);
-    setActiveSection('summary');
+    setActiveSection('spotlight');
   }
 
   const parsed = useMemo(() => {
