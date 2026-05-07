@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { streamClaudeDeltas } from '@/lib/claudeStream'
+import { getProvider } from '@/lib/aiProvider'
 import { buildNdjsonStream } from '@/lib/ndjson'
+import { buildInsightsPrompt, type PromptTransaction } from './lib'
+
+const SYSTEM_PROMPT =
+  'You are a financial-analysis assistant. Output exclusively the format shown in the <output> tags. Use the four section labels verbatim. No preamble, no extra text.'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
 
 function getPreviousMonth(year: number, monthNum: number) {
   const date = new Date(year, monthNum - 2)
@@ -48,7 +47,7 @@ async function prepareRequest(month: string): Promise<PrepareResult> {
   const [transactions, prevResult] = await Promise.all([
     prisma.transaction.findMany({
       where: whereClause,
-      include: { account: { select: { id: true, name: true } } },
+      include: { account: { select: { name: true } } },
       orderBy: { transactionDate: 'asc' },
     }),
     prisma.transaction.aggregate({
@@ -61,55 +60,19 @@ async function prepareRequest(month: string): Promise<PrepareResult> {
     return { ok: false, status: 404, error: `No transactions found for ${month}` }
   }
 
-  const totalAmount = transactions.reduce(
-    (sum, t) => sum + Math.abs(Number(t.amount)),
-    0,
-  )
   const previousMonthTotal = prevResult._sum.amount
     ? Math.abs(Number(prevResult._sum.amount))
     : null
 
-  const monthLabel = `${MONTH_NAMES[monthNum - 1]} ${year}`
-  const prevMonthLabel = `${MONTH_NAMES[prev.month - 1]} ${prev.year}`
+  const promptTransactions: PromptTransaction[] = transactions.map((t) => ({
+    transactionDate: t.transactionDate,
+    description: t.description,
+    amount: Number(t.amount),
+    category: t.category,
+    accountName: t.account.name,
+  }))
 
-  const rows = transactions.map((t) => {
-    const date = new Date(t.transactionDate).toISOString().slice(0, 10)
-    const acct = t.account.name
-    const desc = t.description.slice(0, 30)
-    const cat = (t.category ?? 'Uncategorized').slice(0, 20)
-    const amt = `$${Math.abs(Number(t.amount)).toFixed(2)}`
-    return `${date} | ${acct} | ${desc} | ${cat} | ${amt}`
-  })
-
-  const prevLine = previousMonthTotal != null
-    ? `Previous month (${prevMonthLabel}): $${previousMonthTotal.toFixed(2)}`
-    : `Previous month (${prevMonthLabel}): no data`
-
-  const prompt = [
-    `Here are some financial transactions for ${monthLabel}:`,
-    '',
-    `Total: $${totalAmount.toFixed(2)} across ${transactions.length} transactions`,
-    prevLine,
-    '',
-    'Date       | Account | Description                    | Category             | Amount',
-    ...rows,
-    '',
-    'Analyze the spending for this month. Structure your response using these exact section labels, each on its own line:',
-    '',
-    '[SUMMARY]',
-    'One sentence overall takeaway for the month',
-    '',
-    '[PATTERNS]',
-    'Notable patterns or unusual spending (2-3 bullet points)',
-    '',
-    '[COMPARISON]',
-    'Brief comparison to previous month (1-2 sentences)',
-    '',
-    '[SUGGESTIONS]',
-    'Actionable suggestions (2-3 bullet points)',
-    '',
-    'Use the section labels exactly as shown. Keep each section concise.',
-  ].join('\n')
+  const { prompt, totalAmount } = buildInsightsPrompt(month, promptTransactions, previousMonthTotal)
 
   return { ok: true, prepared: { month, totalAmount, prompt } }
 }
@@ -134,13 +97,13 @@ function buildStreamResponse(opts: {
       enqueue({ type: 'delta', text: cachedAnswer })
       enqueue({ type: 'done' })
     } else if (prompt) {
-      // Cache miss — stream live from Claude CLI.
+      // Cache miss — stream live from the configured AI provider.
       const claudeStart = Date.now()
-      console.log(`[ask-claude] Streaming Claude CLI for ${month}...`)
+      console.log(`[ask-claude] Streaming ${process.env.WORKERS_AI_MODEL ?? 'claude-cli'} for ${month}...`)
 
       let fullText = ''
       try {
-        for await (const text of streamClaudeDeltas(prompt, ac.signal)) {
+        for await (const text of getProvider().streamTextDeltas({ prompt, system: SYSTEM_PROMPT, signal: ac.signal })) {
           fullText += text
           enqueue({ type: 'delta', text })
         }
