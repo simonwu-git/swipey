@@ -17,7 +17,7 @@ export const workersAiProvider = {
     const model = process.env.WORKERS_AI_MODEL ?? DEFAULT_MODEL
 
     if (!accountId || !apiToken) {
-      throw new Error('WORKERS_AI_ACCOUNT_ID and WORKERS_AI_API_TOKEN must be set when AI_PROVIDER=workers-ai')
+      throw new Error('WORKERS_AI_ACCOUNT_ID and WORKERS_AI_API_TOKEN must be set')
     }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`

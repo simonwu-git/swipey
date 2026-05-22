@@ -99,7 +99,7 @@ function buildStreamResponse(opts: {
     } else if (prompt) {
       // Cache miss — stream live from the configured AI provider.
       const claudeStart = Date.now()
-      console.log(`[ask-claude] Streaming ${process.env.WORKERS_AI_MODEL ?? 'claude-cli'} for ${month}...`)
+      console.log(`[ask-claude] Streaming ${process.env.WORKERS_AI_MODEL} for ${month}...`)
 
       let fullText = ''
       try {

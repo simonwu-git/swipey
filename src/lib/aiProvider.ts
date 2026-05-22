@@ -1,4 +1,3 @@
-import { streamClaudeDeltas } from './claudeStream'
 import { workersAiProvider } from './workersAi'
 
 export interface AiProvider {
@@ -6,8 +5,5 @@ export interface AiProvider {
 }
 
 export function getProvider(): AiProvider {
-  if (process.env.AI_PROVIDER === 'workers-ai') return workersAiProvider
-  return {
-    streamTextDeltas: ({ prompt, signal }) => streamClaudeDeltas(prompt, signal),
-  }
+  return workersAiProvider
 }
