@@ -70,7 +70,7 @@ export function AccountForm({ account, onSubmit, onCancel }: AccountFormProps) {
               value={formData.name}
               onChange={handleChange}
               required
-              placeholder="e.g., Chase Sapphire ****2313"
+              placeholder="e.g., Chase Sapphire ****1234"
             />
           </div>
 
@@ -101,7 +101,7 @@ export function AccountForm({ account, onSubmit, onCancel }: AccountFormProps) {
               value={formData.tableKey}
               onChange={handleChange}
               required
-              placeholder="e.g., chase_2313"
+              placeholder="e.g., chase_1234"
             />
             <p className="text-sm text-muted-foreground">
               Unique identifier for this account (used for database table naming)
