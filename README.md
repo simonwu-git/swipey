@@ -2,13 +2,14 @@
 
 A modern web interface for importing and managing financial transactions, built with Next.js and PostgreSQL.
 
+> ⚠️ **Work in progress, local use only.** This project is intended to run on your own machine against a local database. API routes have **no authentication** — anyone who can reach the server can read or modify your transactions. The Docker Compose setup ships with default dev credentials that are not safe for any deployed environment. Don't expose this to the public internet as-is.
+
 ## Features
 
 - **Drag & Drop CSV Upload**: Upload transaction CSV files with a modern drag-and-drop interface
 - **Account Management**: Create and manage multiple bank accounts
 - **Transaction Preview**: Preview transactions before import with duplicate detection
 - **Multi-Bank Support**: Supports Chase and Capital One CSV formats
-- **Duplicate Detection**: Automatically detects and highlights duplicate transactions
 
 ## Tech Stack
 
@@ -67,9 +68,9 @@ A modern web interface for importing and managing financial transactions, built 
 1. Go to the "Accounts" page
 2. Click "Add Account"
 3. Fill in the account details:
-   - **Account Name**: e.g., "Chase Sapphire ****2313"
+   - **Account Name**: e.g., "Chase Sapphire ****1234"
    - **Bank Type**: Select Chase or Capital One
-   - **Table Key**: Unique identifier (e.g., "chase_2313")
+   - **Table Key**: Unique identifier (e.g., "chase_1234")
 
 ### 2. Import Transactions
 
@@ -109,51 +110,6 @@ npm run db:push --force-reset
 npm run db:migrate
 ```
 
-### Project Structure
-
-```
-src/
-├── app/
-│   ├── api/           # API routes
-│   ├── accounts/      # Accounts page
-│   └── page.tsx       # Main upload page
-├── components/        # React components
-├── lib/
-│   ├── parsers/       # CSV parsing logic
-│   ├── db.ts         # Database connection
-│   └── types.ts      # TypeScript types
-└── prisma/           # Database schema
-```
-
-## API Endpoints
-
-- `GET /api/accounts` - List all accounts
-- `POST /api/accounts` - Create new account
-- `PUT /api/accounts/[id]` - Update account
-- `DELETE /api/accounts/[id]` - Delete account
-- `POST /api/parse-csv` - Parse uploaded CSV file
-- `POST /api/import` - Import transactions to database
-
-## Database Schema
-
-### Accounts Table
-- `id`: Primary key
-- `name`: Account display name
-- `tableKey`: Unique identifier for database table
-- `bankType`: Bank type (chase, capital_one)
-- `createdAt`: Creation timestamp
-
-### Transactions Table
-- `id`: Primary key
-- `transactionDate`: Date of transaction
-- `postDate`: Date transaction was posted
-- `description`: Transaction description
-- `category`: Transaction category
-- `transactionType`: Type of transaction
-- `amount`: Transaction amount
-- `accountId`: Foreign key to accounts table
-- `createdAt`: Creation timestamp
-
 ## Troubleshooting
 
 ### Database Connection Issues
@@ -174,8 +130,5 @@ src/
 ## Future Enhancements
 
 - Transaction viewing and search
-- Monthly spending analytics
 - Export functionality
 - Multi-file batch upload
-- Transaction categorization
-- Spending reports and charts
