@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readNdjsonLines } from '@/lib/ndjson';
 
-// Matches the NDJSON event shapes emitted by /api/ask-claude.
+// Matches the NDJSON event shapes emitted by /api/ask-llm.
 type StreamEvent =
   | { type: 'meta'; month: string; totalAmount: number; cached: boolean }
   | { type: 'delta'; text: string }
@@ -41,7 +41,7 @@ export function useInsightsStream(month: string | null): UseInsightsStreamResult
     setInsight(null);
 
     try {
-      const url = `/api/ask-claude?month=${month}${refresh ? '&refresh=true' : ''}`;
+      const url = `/api/ask-llm?month=${month}${refresh ? '&refresh=true' : ''}`;
       const response = await fetch(url, { signal: controller.signal });
 
       // Pre-stream failures (bad month / no transactions) come back as JSON.
@@ -78,7 +78,7 @@ export function useInsightsStream(month: string | null): UseInsightsStreamResult
       }
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
-      setError('Failed to connect to Claude');
+      setError('Failed to connect to LLM');
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;

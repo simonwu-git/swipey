@@ -1,8 +1,8 @@
 // AI-backed transaction-grouping endpoint.
 //
-// GET /api/ask-claude/groupings?month=YYYY-MM[&refresh=true]
+// GET /api/ask-llm/groupings?month=YYYY-MM[&refresh=true]
 //
-// Streams Claude's groupings incrementally as NDJSON so the first card
+// Streams the LLM's groupings incrementally as NDJSON so the first card
 // appears within ~5–10s instead of waiting for the full ~30s response.
 // Cached by month on `MonthlyInsight.groupings`; cache hits replay instantly
 // through the same event protocol so the client code stays uniform.
@@ -117,8 +117,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Live streaming path — stream Claude deltas, parse JSONL lines as they arrive.
-  const claudeStart = Date.now()
+  // Live streaming path — stream LLM deltas, parse JSONL lines as they arrive.
+  const llmStart = Date.now()
   console.log(`[groupings] Streaming ${process.env.WORKERS_AI_MODEL} for ${month}...`)
 
   return buildNdjsonStream(async (enqueue, ac) => {
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
         enqueue({ type: 'grouping', data: grouping })
       }
 
-      const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
+      const elapsed = ((Date.now() - llmStart) / 1000).toFixed(2)
       console.log(`[groupings] Stream done for ${month} in ${elapsed}s — ${cleanArray.length} groups`)
 
       // Persist to cache.
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
   })
 }
 
-// PATCH /api/ask-claude/groupings
+// PATCH /api/ask-llm/groupings
 // Body: { month: "YYYY-MM", groupingId: string, transactionIds: string[] }
 // Updates the membership of a single grouping (user correction of AI result).
 export async function PATCH(request: NextRequest) {

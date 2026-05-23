@@ -98,8 +98,8 @@ function buildStreamResponse(opts: {
       enqueue({ type: 'done' })
     } else if (prompt) {
       // Cache miss — stream live from the configured AI provider.
-      const claudeStart = Date.now()
-      console.log(`[ask-claude] Streaming ${process.env.WORKERS_AI_MODEL} for ${month}...`)
+      const llmStart = Date.now()
+      console.log(`[ask-llm] Streaming ${process.env.WORKERS_AI_MODEL} for ${month}...`)
 
       let fullText = ''
       try {
@@ -116,16 +116,16 @@ function buildStreamResponse(opts: {
               create: { month, answer: fullText, totalAmount },
             })
           } catch (err) {
-            console.error('[ask-claude] cache upsert failed:', err)
+            console.error('[ask-llm] cache upsert failed:', err)
           }
         }
 
-        const elapsed = ((Date.now() - claudeStart) / 1000).toFixed(2)
-        console.log(`[ask-claude] Streaming done for ${month} in ${elapsed}s`)
+        const elapsed = ((Date.now() - llmStart) / 1000).toFixed(2)
+        console.log(`[ask-llm] Streaming done for ${month} in ${elapsed}s`)
         enqueue({ type: 'done' })
       } catch (err) {
         if (!ac.signal.aborted) {
-          console.error('[ask-claude] stream error:', err)
+          console.error('[ask-llm] stream error:', err)
           enqueue({
             type: 'error',
             message: err instanceof Error ? err.message : 'Unknown error',
@@ -157,15 +157,15 @@ export async function GET(request: NextRequest) {
 
     const refresh = searchParams.get('refresh') === 'true'
 
-    console.log(`[ask-claude] Request for month=${month}${refresh ? ' (refresh)' : ''}`)
+    console.log(`[ask-llm] Request for month=${month}${refresh ? ' (refresh)' : ''}`)
     const startTime = Date.now()
 
     if (!refresh) {
       const cached = await prisma.monthlyInsight.findUnique({ where: { month } })
-      // Row may exist with only `groupings` populated (from /api/ask-claude/groupings).
+      // Row may exist with only `groupings` populated (from /api/ask-llm/groupings).
       // Treat it as a cache miss for insights and fall through to the live model call.
       if (cached?.answer != null) {
-        console.log(`[ask-claude] Cache hit for ${month}`)
+        console.log(`[ask-llm] Cache hit for ${month}`)
         return buildStreamResponse({
           month: cached.month,
           totalAmount: Number(cached.totalAmount),
@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: prep.error }, { status: prep.status })
     }
 
-    console.log(`[ask-claude] Prepared prompt in ${((Date.now() - startTime) / 1000).toFixed(2)}s`)
+    console.log(`[ask-llm] Prepared prompt in ${((Date.now() - startTime) / 1000).toFixed(2)}s`)
 
     return buildStreamResponse({
       month,
@@ -189,9 +189,9 @@ export async function GET(request: NextRequest) {
       prompt: prep.prepared.prompt,
     })
   } catch (error) {
-    console.error('[ask-claude]', error)
+    console.error('[ask-llm]', error)
     return NextResponse.json(
-      { error: 'Failed to call Claude', details: error instanceof Error ? error.message : 'Unknown' },
+      { error: 'Failed to call LLM', details: error instanceof Error ? error.message : 'Unknown' },
       { status: 500 },
     )
   }

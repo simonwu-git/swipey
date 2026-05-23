@@ -1,6 +1,6 @@
 // Pure logic for the AI-backed transaction-grouping endpoint.
 // No I/O, no Prisma types — testable in isolation. Route.ts owns the HTTP
-// plumbing, Prisma queries, and Claude invocation; this module owns the
+// plumbing, Prisma queries, and LLM invocation; this module owns the
 // schemas, prompt format, and the index↔ID + sanitize transformations.
 
 import { createHash } from 'crypto'

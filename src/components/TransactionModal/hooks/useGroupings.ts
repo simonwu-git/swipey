@@ -49,7 +49,7 @@ export function useGroupings(month: string | null, enabled: boolean): UseGroupin
     setGroupings([]);
 
     try {
-      const url = `/api/ask-claude/groupings?month=${month}${forceRefresh ? '&refresh=true' : ''}`;
+      const url = `/api/ask-llm/groupings?month=${month}${forceRefresh ? '&refresh=true' : ''}`;
       const response = await fetch(url, { signal: controller.signal });
 
       if (!response.ok) {
@@ -109,7 +109,7 @@ export function useGroupings(month: string | null, enabled: boolean): UseGroupin
 
   const updateGrouping = useCallback(async (groupingId: string, transactionIds: string[]): Promise<Grouping> => {
     if (!month) throw new Error('No month set');
-    const response = await fetch('/api/ask-claude/groupings', {
+    const response = await fetch('/api/ask-llm/groupings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ month, groupingId, transactionIds }),
