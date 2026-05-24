@@ -1,8 +1,10 @@
-# Finances Web
+# Swipey
 
-A modern web interface for importing and managing financial transactions, built with Next.js and PostgreSQL.
+A local-first, privacy-focused way to manage credit card spend across multiple banks, built with Next.js and PostgreSQL.
 
-> ⚠️ **Work in progress, local use only.** This project is intended to run on your own machine against a local database. API routes have **no authentication** — anyone who can reach the server can read or modify your transactions. The Docker Compose setup ships with default dev credentials that are not safe for any deployed environment. Don't expose this to the public internet as-is.
+Supports Chase and Capital One CSV exports.
+
+> ⚠️ **Work in progress, local use only.** This project is intended to run on your own machine against a local database. API routes have no authentication. If hosted, anyone who can reach the server can read or modify your transactions. The Docker Compose setup ships with default dev credentials that are not safe for any deployed environment. Don't expose this to the public internet as-is.
 
 ## Features
 
